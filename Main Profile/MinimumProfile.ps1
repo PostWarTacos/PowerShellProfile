@@ -35,7 +35,7 @@ function find-file($name) {
 $user = [System.Environment]::GetFolderPath("UserProfile")
 $root = join-path $user "Documents"
 $foundFolder = Get-ChildItem -Path $root -Directory -Recurse -ErrorAction SilentlyContinue |
-    Where-Object { $_.Name -eq "Modules" } |
+    Where-Object { $_.Name -match "Modules" } |
     Select-Object -First 1
 If ( $foundFolder ){
     $modules =  Get-ChildItem $foundFolder.FullName -ErrorAction SilentlyContinue
@@ -137,8 +137,8 @@ Set-PSReadLineKeyHandler -Key RightArrow `
 
 #---------------------------------Transcript---------------------------------#
 
-If ( -not ( Test-Path "$user\Documents\Coding\PowerShell\Transcripts" )){
+If ( -not ( Test-Path "$user\Documents\Coding\Transcripts" )){
 	mkdir "$user\Documents\Coding\PowerShell\Transcripts" | Out-Null
 }
 
-Start-Transcript -OutputDirectory "$user\Documents\Coding\PowerShell\Transcripts" -NoClobber -IncludeInvocationHeader | Out-Null
+Start-Transcript -OutputDirectory "$user\Documents\Coding\Transcripts" -NoClobber -IncludeInvocationHeader | Out-Null
