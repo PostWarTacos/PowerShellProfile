@@ -138,7 +138,7 @@ Set-PSReadLineKeyHandler -Key RightArrow `
 #---------------------------------Transcript---------------------------------#
 
 If ( -not ( Test-Path "$user\Documents\Coding\Transcripts" )){
-	mkdir "$user\Documents\Coding\PowerShell\Transcripts" | Out-Null
+	mkdir "$user\Documents\Coding\PowerShell\Transcripts" -ErrorAction SilentlyContinue | Out-Null
 }
 
 Start-Transcript -OutputDirectory "$user\Documents\Coding\Transcripts" -NoClobber -IncludeInvocationHeader | Out-Null
