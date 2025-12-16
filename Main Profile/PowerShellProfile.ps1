@@ -53,39 +53,6 @@ Sync-GitModules
 
 #endregion
 
-#region Cosmetics
-
-# Test if machine is a server. Don't run these commands if it is
-# Product type 1 = Workstation. 2 = Domain controller. 3 = non-DC server.
-if (( Get-WmiObject -class win32_OperatingSystem ).ProductType -eq 1 ) {
-    # Download configs and apply locally
-	# oh-my-posh
-    If ( Get-Command oh-my-posh ){
-		Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/Powershell/refs/heads/main/PowerShell%20Profile/uew.json"`
-			-OutFile "$user\Documents\Coding\PowerShell\PowerShellProfile\uew.json"
-		oh-my-posh init pwsh --config "$user\Documents\Coding\PowerShell\PowerShellProfile\uew.json" | Invoke-Expression
-	}
-	
-    # WinFetch
-    if ( Get-Command WinFetch ){
-		Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/Powershell/refs/heads/main/PowerShell%20Profile/WinFetch/CustomConfig.ps1"`
-			-OutFile "$user\.config\winfetch\Config.ps1"
-		winfetch -configpath "$user\.config\winfetch\Config.ps1"
-		winfetch
-	}
-	
-    # Terminal Icons
-    Import-Module -Name Terminal-Icons
-
-    # Import settings.json file for Windows Terminal
-    if ( Test-Path %LOCALAPPDATA%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState ) {
-        Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/Powershell/refs/heads/main/PowerShell%20Profile/Win%20Terminal%20Settings/settings.json"`
-            -OutFile "%LOCALAPPDATA%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
-    }
-}
-
-#endregion
-
 #region Linux-like Commands
 
 # grep
@@ -206,6 +173,47 @@ Set-PSReadLineKeyHandler -Key RightArrow `
         [Microsoft.PowerShell.PSConsoleReadLine]::ForwardChar( $key, $arg )
     } else {
         [Microsoft.PowerShell.PSConsoleReadLine]::AcceptNextSuggestionWord( $key, $arg )
+    }
+}
+
+#endregion
+
+#region Cosmetics
+
+# Test if machine is a server. Don't run these commands if it is
+# Product type 1 = Workstation. 2 = Domain controller. 3 = non-DC server.
+if (( Get-WmiObject -class win32_OperatingSystem ).ProductType -eq 1 ) {
+    # Download configs and apply locally
+    # Only load in modern terminals (not ISE)
+    if ($host.Name -ne 'Windows PowerShell ISE Host') {
+	    # oh-my-posh
+        If ( Get-Command oh-my-posh -ErrorAction SilentlyContinue ){
+            Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/Powershell/refs/heads/main/PowerShell%20Profile/uew.json"`
+                -OutFile "$user\Documents\Coding\PowerShell\PowerShellProfile\uew.json"
+            if ($PSVersionTable.PSVersion.Major -ge 6) {
+                oh-my-posh init pwsh --config "c:\Users\wurtzmt\Documents\Coding\PowerShellProfile\oh-my-posh\UEW.json" | Invoke-Expression
+            } else {
+                oh-my-posh init powershell --config "c:\Users\wurtzmt\Documents\Coding\PowerShellProfile\oh-my-posh\UEW.json" | Invoke-Expression
+            }
+        }
+        # WinFetch
+        if ( Get-Command WinFetch ){
+            Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/Powershell/refs/heads/main/PowerShell%20Profile/WinFetch/CustomConfig.ps1"`
+                -OutFile "$user\.config\winfetch\Config.ps1"
+            winfetch -configpath "$user\.config\winfetch\Config.ps1"
+            winfetch
+        }
+    }
+	
+
+	
+    # Terminal Icons
+    Import-Module -Name Terminal-Icons
+
+    # Import settings.json file for Windows Terminal
+    if ( Test-Path %LOCALAPPDATA%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState ) {
+        Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/Powershell/refs/heads/main/PowerShell%20Profile/Win%20Terminal%20Settings/settings.json"`
+            -OutFile "%LOCALAPPDATA%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
     }
 }
 
