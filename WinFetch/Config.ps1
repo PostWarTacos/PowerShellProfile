@@ -105,9 +105,9 @@ $batterystyle = 'bartext'
     "disk"
     "battery"
     # "locale"
-    "weather"
     "local_ip"
+    "blank"
+    "weather"
     # "public_ip"
-    # "blank"
     # "colorbar"
 )
