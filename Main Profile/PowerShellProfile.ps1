@@ -1,6 +1,6 @@
-#---------------------------------Create Coding Directory---------------------------------#
+#region Create Coding Directory
 
-If ( $(whoami) -like "wurtzmt" ){
+If ( $(whoami) -match "wurtzmt" ){
     $user = "C:\users\wurtzmt"
 } 
 Else {
@@ -11,33 +11,49 @@ If ( -not ( Test-Path "$user\Documents\Coding" )){
     mkdir "$user\Documents\Coding"
 }
 
-#---------------------------------PowerShell Profile Auto Git Sync---------------------------------#
+#endregion
 
-$repoURL = "https://github.com/PostWarTacos/PowerShell.git"
-$clonePath = "$user\Documents\Coding\PowerShell"
+#region PowerShell Modules Auto Git Sync
 
-function Sync-GitProfile {
+# Check if git is installed, install if needed
+If ( -not ( Get-Command git -ErrorAction SilentlyContinue )) {
+    If ( Get-Command winget -ErrorAction SilentlyContinue ) {
+        winget install --id Git.Git -e --source winget --silent
+    } ElseIf ( Get-Command choco -ErrorAction SilentlyContinue ) {
+        choco install git -y
+    } Else {
+        Write-Host "Please install Git manually from https://git-scm.com/download/win"
+    }
+}
+
+$repoURL = "https://github.com/PostWarTacos/Powershell-Modules.git"
+$clonePath = "$user\Documents\Coding\Powershell-Modules"
+
+function Sync-GitModules {
+    Write-Host "Prepping Workspace..."
+    
     If ( -not ( Test-Path "$clonePath" )){
-        mkdir "$clonePath"
+        mkdir "$clonePath" | Out-Null
     }
     if ( -not ( Test-Path "$clonePath\.git" )) {
-        Write-Host "Initializing Git Repository..."
         Set-Location $clonePath
-        git init
-        git remote add origin $repoURL
+        git init 2>&1 | Out-Null
+        git remote add origin $repoURL 2>&1 | Out-Null
     }
 
     Set-Location $clonePath
-    git pull origin main
-    git add .
-    git commit -m "Auto-sync PowerShell Profile on $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
-    git push origin main
+    git pull origin main 2>&1 | Out-Null
+    git add . 2>&1 | Out-Null
+    git commit -m "Auto-sync PowerShell Modules on $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" 2>&1 | Out-Null
+    git push origin main 2>&1 | Out-Null
 }
 
-# Run Sync-GitProfile automatically when PowerShell starts
-Sync-GitProfile
+# Sync custom PowerShell modules automatically when PowerShell starts
+Sync-GitModules
 
-#---------------------------------Main Profile---------------------------------#
+#endregion
+
+#region Cosmetics
 
 # Test if machine is a server. Don't run these commands if it is
 # Product type 1 = Workstation. 2 = Domain controller. 3 = non-DC server.
@@ -68,7 +84,9 @@ if (( Get-WmiObject -class win32_OperatingSystem ).ProductType -eq 1 ) {
     }
 }
 
-#---------------------------------Linux-like Commands---------------------------------#
+#endregion
+
+#region Linux-like Commands
 
 # grep
 function grep($regex, $dir) {
@@ -87,7 +105,9 @@ function find-file($name) {
     }
 }
 
-#---------------------------------Import PSModules---------------------------------#
+#endregion
+
+#region Import PSModules
 
 If ( Test-Path $clonePath\Modules ){
     $modules = Get-ChildItem $clonePath\Modules
@@ -96,7 +116,9 @@ If ( Test-Path $clonePath\Modules ){
     }
 }
 
-#---------------------------------PSReadLineOptions---------------------------------#
+#endregion
+
+#region PSReadLineOptions
 
 # Searching for commands with up/down arrow is really handy.  The
 # option "moves to end" is useful if you want the cursor at the end
@@ -187,10 +209,14 @@ Set-PSReadLineKeyHandler -Key RightArrow `
     }
 }
 
-#---------------------------------Transcript---------------------------------#
+#endregion
 
-If ( -not ( Test-Path "$user\Documents\Coding\PowerShell\Transcripts" )){
-	mkdir "$user\Documents\Coding\PowerShell\Transcripts" | Out-Null
+#region Transcript
+
+If ( -not ( Test-Path "$user\Documents\Coding\PowerShell-Transcripts" )){
+	mkdir "$user\Documents\Coding\PowerShell-Transcripts" | Out-Null
 }
 
-Start-Transcript -OutputDirectory "$user\Documents\Coding\PowerShell\Transcripts" -NoClobber -IncludeInvocationHeader | Out-Null
+Start-Transcript -OutputDirectory "$user\Documents\Coding\PowerShell-Transcripts" -NoClobber -IncludeInvocationHeader | Out-Null
+
+#endregion

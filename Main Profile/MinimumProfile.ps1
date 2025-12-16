@@ -1,4 +1,4 @@
-#---------------------------------Create Coding Directory---------------------------------#
+#region Create Coding Directory
 
 If ( $(whoami) -match "wurtzmt" ){
     $user = "C:\users\wurtzmt"
@@ -11,7 +11,49 @@ If ( -not ( Test-Path "$user\Documents\Coding" )){
     mkdir "$user\Documents\Coding"
 }
 
-#---------------------------------Linux-like Commands---------------------------------#
+#endregion
+
+#region PowerShell Modules Auto Git Sync
+
+# Check if git is installed, install if needed
+If ( -not ( Get-Command git -ErrorAction SilentlyContinue )) {
+    If ( Get-Command winget -ErrorAction SilentlyContinue ) {
+        winget install --id Git.Git -e --source winget --silent
+    } ElseIf ( Get-Command choco -ErrorAction SilentlyContinue ) {
+        choco install git -y
+    } Else {
+        Write-Host "Please install Git manually from https://git-scm.com/download/win"
+    }
+}
+
+$repoURL = "https://github.com/PostWarTacos/Powershell-Modules.git"
+$clonePath = "$user\Documents\Coding\Powershell-Modules"
+
+function Sync-GitModules {
+    Write-Host "Prepping Workspace..."
+    
+    If ( -not ( Test-Path "$clonePath" )){
+        mkdir "$clonePath" | Out-Null
+    }
+    if ( -not ( Test-Path "$clonePath\.git" )) {
+        Set-Location $clonePath
+        git init 2>&1 | Out-Null
+        git remote add origin $repoURL 2>&1 | Out-Null
+    }
+
+    Set-Location $clonePath
+    git pull origin main 2>&1 | Out-Null
+    git add . 2>&1 | Out-Null
+    git commit -m "Auto-sync PowerShell Modules on $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" 2>&1 | Out-Null
+    git push origin main 2>&1 | Out-Null
+}
+
+# Sync custom PowerShell modules automatically when PowerShell starts
+Sync-GitModules
+
+#endregion
+
+#region Linux-like Commands
 
 # grep
 function grep($regex, $dir) {
@@ -30,21 +72,20 @@ function find-file($name) {
     }
 }
 
-#---------------------------------Import PSModules---------------------------------#
+#endregion
 
-$user = [System.Environment]::GetFolderPath("UserProfile")
-$root = join-path $user "Documents"
-$foundFolder = Get-ChildItem -Path $root -Directory -Recurse -ErrorAction SilentlyContinue |
-    Where-Object { $_.Name -match "Modules" } |
-    Select-Object -First 1
-If ( $foundFolder ){
-    $modules =  Get-ChildItem $foundFolder.FullName -ErrorAction SilentlyContinue
+#region Import PSModules
+
+If ( Test-Path $clonePath ){
+    $modules = Get-ChildItem $clonePath
     foreach ( $module in $modules ){
-        Import-Module $module.fullname -ErrorAction SilentlyContinue -WarningAction SilentlyContinue | Out-Null
+        Import-Module $module.fullname
     }
 }
 
-#---------------------------------PSReadLineOptions---------------------------------#
+#endregion
+
+#region PSReadLineOptions
 
 # Searching for commands with up/down arrow is really handy.  The
 # option "moves to end" is useful if you want the cursor at the end
@@ -135,10 +176,14 @@ Set-PSReadLineKeyHandler -Key RightArrow `
     }
 }
 
-#---------------------------------Transcript---------------------------------#
+#endregion
 
-If ( -not ( Test-Path "$user\Documents\Coding\Transcripts" )){
-	mkdir "$user\Documents\Coding\PowerShell\Transcripts" -ErrorAction SilentlyContinue | Out-Null
+#region Transcript
+
+If ( -not ( Test-Path "$user\Documents\Coding\PowerShell-Transcripts" )){
+	mkdir "$user\Documents\Coding\PowerShell-Transcripts" -ErrorAction SilentlyContinue | Out-Null
 }
 
-Start-Transcript -OutputDirectory "$user\Documents\Coding\Transcripts" -NoClobber -IncludeInvocationHeader | Out-Null
+Start-Transcript -OutputDirectory "$user\Documents\Coding\PowerShell-Transcripts" -NoClobber -IncludeInvocationHeader | Out-Null
+
+#endregion
