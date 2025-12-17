@@ -206,7 +206,7 @@ if (( Get-WmiObject -class win32_OperatingSystem ).ProductType -eq 1 ) {
         If ( Get-Command oh-my-posh -ErrorAction SilentlyContinue ){
             $ompConfigPath = "$user\Documents\Coding\PowerShellProfile\OhMyPoshTheme.json"
             if ( -not ( Test-Path $ompConfigPath )) {
-                Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/Powershell/refs/heads/main/PowerShellProfile/OhMyPoshTheme.json"`
+                Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/OhMyPoshTheme.json"`
                     -OutFile $ompConfigPath
             }
             if ($PSVersionTable.PSVersion.Major -ge 6) {
@@ -218,14 +218,14 @@ if (( Get-WmiObject -class win32_OperatingSystem ).ProductType -eq 1 ) {
 
         # Windows Terminal Settings
         $wtSettingsPath = "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
-        Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/Powershell/refs/heads/main/PowerShellProfile/WindowsTerminalSettings.json"`
+        Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/WindowsTerminalSettings.json"`
             -OutFile $wtSettingsPath
         
         # WinFetch
         if ( Get-Command WinFetch ){
             $winfetchConfigPath = "$user\.config\winfetch\Config.ps1"
             if ( -not ( Test-Path $winfetchConfigPath )) {
-                Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/Powershell/refs/heads/main/PowerShellProfile/WinFetchConfig.ps1"`
+                Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/WinFetchConfig.ps1"`
                     -OutFile $winfetchConfigPath
             }
             winfetch -configpath $winfetchConfigPath
