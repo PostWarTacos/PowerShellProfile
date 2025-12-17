@@ -1,3 +1,9 @@
+# All Users All Hosts PowerShell Profile
+# Set-Content -Path "C:\Windows\System32\WindowsPowerShell\v1.0\profile.ps1" -Value '. "C:\Users\wurtzmt\Documents\Coding\PowerShellProfile\PowerShellProfile.ps1"' -Force
+
+# Current User All Hosts PowerShell Profile
+# Set-Content $PROFILE -Value '. "C:\Users\wurtzmt\Documents\Coding\PowerShellProfile\PowerShellProfile.ps1"' -force
+
 #region Create Coding Directory
 
 If ( $(whoami) -match "wurtzmt" ){
@@ -190,8 +196,7 @@ if (( Get-WmiObject -class win32_OperatingSystem ).ProductType -eq 1 ) {
         # Install Nerd Font if not already installed
         $nerdFontInstalled = Test-Path "$env:LOCALAPPDATA\Microsoft\Windows\Fonts\JetBrainsMonoNerdFont*.ttf"
         if ( -not $nerdFontInstalled ) {
-            winget install --id=DEVCOM.JetBrainsMonoNerdFont -e --source=winget --silent
-            Write-Host "Nerd Font installed. Please restart Windows Terminal for icons to display correctly." -ForegroundColor Yellow
+            winget install --id=DEVCOM.JetBrainsMonoNerdFont -e --source=winget --silent 2>&1 | Out-Null
         }
         
         # Terminal Icons
@@ -199,11 +204,8 @@ if (( Get-WmiObject -class win32_OperatingSystem ).ProductType -eq 1 ) {
 
         # oh-my-posh
         If ( Get-Command oh-my-posh -ErrorAction SilentlyContinue ){
-            $ompConfigPath = "$user\Documents\Coding\PowerShellProfile\oh-my-posh\UEW.json"
+            $ompConfigPath = "$user\Documents\Coding\PowerShellProfile\UEW.json"
             if ( -not ( Test-Path $ompConfigPath )) {
-                If ( -not ( Test-Path "$user\Documents\Coding\PowerShellProfile\oh-my-posh" )) {
-                    mkdir "$user\Documents\Coding\PowerShellProfile\oh-my-posh" | Out-Null
-                }
                 Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/Powershell/refs/heads/main/PowerShell%20Profile/uew.json"`
                     -OutFile $ompConfigPath
             }
@@ -227,7 +229,6 @@ if (( Get-WmiObject -class win32_OperatingSystem ).ProductType -eq 1 ) {
                     -OutFile $winfetchConfigPath
             }
             winfetch -configpath $winfetchConfigPath
-            winfetch
         }
     }
 }
