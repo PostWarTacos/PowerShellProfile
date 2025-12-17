@@ -185,8 +185,19 @@ Set-PSReadLineKeyHandler -Key RightArrow `
 if (( Get-WmiObject -class win32_OperatingSystem ).ProductType -eq 1 ) {
     # Download configs and apply locally
     # Only load in modern terminals (not ISE)
-    if ($host.Name -ne 'Windows PowerShell ISE Host') {
-	    # oh-my-posh
+    if ( $env:WT_SESSION ) {
+	           
+        # Install Nerd Font if not already installed
+        $nerdFontInstalled = Test-Path "$env:LOCALAPPDATA\Microsoft\Windows\Fonts\JetBrainsMonoNerdFont*.ttf"
+        if ( -not $nerdFontInstalled ) {
+            winget install --id=DEVCOM.JetBrainsMonoNerdFont -e --source=winget --silent
+            Write-Host "Nerd Font installed. Please restart Windows Terminal for icons to display correctly." -ForegroundColor Yellow
+        }
+        
+        # Terminal Icons
+        Import-Module -Name Terminal-Icons
+
+        # oh-my-posh
         If ( Get-Command oh-my-posh -ErrorAction SilentlyContinue ){
             $ompConfigPath = "$user\Documents\Coding\PowerShellProfile\oh-my-posh\UEW.json"
             if ( -not ( Test-Path $ompConfigPath )) {
@@ -201,22 +212,13 @@ if (( Get-WmiObject -class win32_OperatingSystem ).ProductType -eq 1 ) {
             } else {
                 oh-my-posh init powershell --config $ompConfigPath | Invoke-Expression
             }
-        }
-        # Import for Windows Terminal
-        if ( $env:WT_SESSION ) {
-            # Install Nerd Font if not already installed
-            $nerdFontInstalled = Test-Path "$env:LOCALAPPDATA\Microsoft\Windows\Fonts\JetBrainsMonoNerdFont*.ttf"
-            if ( -not $nerdFontInstalled ) {
-                winget install --id=DEVCOM.JetBrainsMonoNerdFont -e --source=winget --silent
-                Write-Host "Nerd Font installed. Please restart Windows Terminal for icons to display correctly." -ForegroundColor Yellow
-            }
-            # Terminal Icons
-            Import-Module -Name Terminal-Icons
-            # Settings.json file
-            $wtSettingsPath = "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
-            Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/Powershell/refs/heads/main/PowerShell%20Profile/Win%20Terminal%20Settings/settings.json"`
-                -OutFile $wtSettingsPath            
-        }
+        }        
+
+        # Settings.json file
+        $wtSettingsPath = "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
+        Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/Powershell/refs/heads/main/PowerShell%20Profile/Win%20Terminal%20Settings/settings.json"`
+            -OutFile $wtSettingsPath
+        
         # WinFetch
         if ( Get-Command WinFetch ){
             $winfetchConfigPath = "$user\.config\winfetch\Config.ps1"
