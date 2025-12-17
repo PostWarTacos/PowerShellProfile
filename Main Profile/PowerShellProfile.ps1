@@ -188,35 +188,48 @@ if (( Get-WmiObject -class win32_OperatingSystem ).ProductType -eq 1 ) {
     if ($host.Name -ne 'Windows PowerShell ISE Host') {
 	    # oh-my-posh
         If ( Get-Command oh-my-posh -ErrorAction SilentlyContinue ){
-            Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/Powershell/refs/heads/main/PowerShell%20Profile/uew.json"`
-                -OutFile "$user\Documents\Coding\PowerShell\PowerShellProfile\uew.json"
-            if ($PSVersionTable.PSVersion.Major -ge 6) {
-                oh-my-posh init pwsh --config "c:\Users\wurtzmt\Documents\Coding\PowerShellProfile\oh-my-posh\UEW.json" | Invoke-Expression
-            } else {
-                oh-my-posh init powershell --config "c:\Users\wurtzmt\Documents\Coding\PowerShellProfile\oh-my-posh\UEW.json" | Invoke-Expression
+            $ompConfigPath = "$user\Documents\Coding\PowerShellProfile\oh-my-posh\UEW.json"
+            if ( -not ( Test-Path $ompConfigPath )) {
+                If ( -not ( Test-Path "$user\Documents\Coding\PowerShellProfile\oh-my-posh" )) {
+                    mkdir "$user\Documents\Coding\PowerShellProfile\oh-my-posh" | Out-Null
+                }
+                Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/Powershell/refs/heads/main/PowerShell%20Profile/uew.json"`
+                    -OutFile $ompConfigPath
             }
+            if ($PSVersionTable.PSVersion.Major -ge 6) {
+                oh-my-posh init pwsh --config $ompConfigPath | Invoke-Expression
+            } else {
+                oh-my-posh init powershell --config $ompConfigPath | Invoke-Expression
+            }
+        }
+        # Import for Windows Terminal
+        if ( $env:WT_SESSION ) {
+            # Install Nerd Font if not already installed
+            $nerdFontInstalled = Test-Path "$env:LOCALAPPDATA\Microsoft\Windows\Fonts\JetBrainsMonoNerdFont*.ttf"
+            if ( -not $nerdFontInstalled ) {
+                winget install --id=DEVCOM.JetBrainsMonoNerdFont -e --source=winget --silent
+                Write-Host "Nerd Font installed. Please restart Windows Terminal for icons to display correctly." -ForegroundColor Yellow
+            }
+            # Terminal Icons
+            Import-Module -Name Terminal-Icons
+            # Settings.json file
+            $wtSettingsPath = "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
+            Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/Powershell/refs/heads/main/PowerShell%20Profile/Win%20Terminal%20Settings/settings.json"`
+                -OutFile $wtSettingsPath            
         }
         # WinFetch
         if ( Get-Command WinFetch ){
-            Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/Powershell/refs/heads/main/PowerShell%20Profile/WinFetch/CustomConfig.ps1"`
-                -OutFile "$user\.config\winfetch\Config.ps1"
-            winfetch -configpath "$user\.config\winfetch\Config.ps1"
+            $winfetchConfigPath = "$user\.config\winfetch\Config.ps1"
+            if ( -not ( Test-Path $winfetchConfigPath )) {
+                Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/Powershell/refs/heads/main/PowerShell%20Profile/WinFetch/CustomConfig.ps1"`
+                    -OutFile $winfetchConfigPath
+            }
+            winfetch -configpath $winfetchConfigPath
             winfetch
         }
     }
-	
-
-	
-    # Terminal Icons
-    Import-Module -Name Terminal-Icons
-
-    # Import settings.json file for Windows Terminal
-    if ( Test-Path %LOCALAPPDATA%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState ) {
-        Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/Powershell/refs/heads/main/PowerShell%20Profile/Win%20Terminal%20Settings/settings.json"`
-            -OutFile "%LOCALAPPDATA%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
-    }
 }
-
+ 
 #endregion
 
 #region Transcript
