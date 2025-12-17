@@ -204,9 +204,9 @@ if (( Get-WmiObject -class win32_OperatingSystem ).ProductType -eq 1 ) {
 
         # oh-my-posh
         If ( Get-Command oh-my-posh -ErrorAction SilentlyContinue ){
-            $ompConfigPath = "$user\Documents\Coding\PowerShellProfile\UEW.json"
+            $ompConfigPath = "$user\Documents\Coding\PowerShellProfile\OhMyPoshTheme.json"
             if ( -not ( Test-Path $ompConfigPath )) {
-                Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/Powershell/refs/heads/main/PowerShell%20Profile/uew.json"`
+                Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/Powershell/refs/heads/main/PowerShellProfile/OhMyPoshTheme.json"`
                     -OutFile $ompConfigPath
             }
             if ($PSVersionTable.PSVersion.Major -ge 6) {
@@ -216,16 +216,16 @@ if (( Get-WmiObject -class win32_OperatingSystem ).ProductType -eq 1 ) {
             }
         }        
 
-        # Settings.json file
+        # Windows Terminal Settings
         $wtSettingsPath = "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
-        Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/Powershell/refs/heads/main/PowerShell%20Profile/Win%20Terminal%20Settings/settings.json"`
+        Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/Powershell/refs/heads/main/PowerShellProfile/WindowsTerminalSettings.json"`
             -OutFile $wtSettingsPath
         
         # WinFetch
         if ( Get-Command WinFetch ){
             $winfetchConfigPath = "$user\.config\winfetch\Config.ps1"
             if ( -not ( Test-Path $winfetchConfigPath )) {
-                Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/Powershell/refs/heads/main/PowerShell%20Profile/WinFetch/CustomConfig.ps1"`
+                Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/Powershell/refs/heads/main/PowerShellProfile/WinFetchConfig.ps1"`
                     -OutFile $winfetchConfigPath
             }
             winfetch -configpath $winfetchConfigPath
