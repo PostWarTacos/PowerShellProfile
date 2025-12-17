@@ -3,8 +3,10 @@
     "$schema": "https://aka.ms/terminal-profiles-schema",
     "actions": [],
     "copyFormatting": "none",
-    "copyOnSelect": false,
-    "defaultProfile": "{332716b3-2a2c-4a19-9e39-e1dacc21b903}",
+    "copyOnSelect": true,
+    "defaultProfile": "{61c54bbd-c2c6-5271-96e7-009a87ff44bf}",
+    "initialCols": 140,
+    "initialRows": 35,
     "keybindings": 
     [
         {
@@ -35,7 +37,14 @@
         "list": 
         [
             {
+                "background": null,
+                "colorScheme": "Campbell",
                 "commandline": "%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+                "font": 
+                {
+                    "face": "Cousine Nerd Font"
+                },
+                "foreground": "#1BC622",
                 "guid": "{61c54bbd-c2c6-5271-96e7-009a87ff44bf}",
                 "hidden": false,
                 "name": "Windows PowerShell"
@@ -53,29 +62,57 @@
                 "source": "Windows.Terminal.Azure"
             },
             {
+                "guid": "{2ece5bfe-50ed-5f3a-ab87-5cd4baafed2b}",
+                "hidden": false,
+                "name": "Git Bash",
+                "source": "Git"
+            },
+            {
                 "altGrAliasing": true,
                 "antialiasingMode": "grayscale",
+                "background": null,
                 "closeOnExit": "automatic",
-                "colorScheme": "Solarized Dark",
+                "colorScheme": "Campbell",
                 "commandline": "%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
-                "cursorShape": "vintage",
+                "cursorShape": "bar",
                 "elevate": true,
                 "font": 
                 {
-                    "face": "Cousine Nerd Font",
-                    "size": 14,
-                    "weight": "medium"
+                    "face": "Cascadia Mono",
+                    "size": 12
                 },
-                "guid": "{332716b3-2a2c-4a19-9e39-e1dacc21b903}",
+                "guid": "{1ebef6e3-3504-4f57-bbe3-92313c358e8a}",
                 "hidden": false,
                 "historySize": 9001,
                 "icon": "ms-appx:///ProfileIcons/{61c54bbd-c2c6-5271-96e7-009a87ff44bf}.png",
-                "name": "My Profile",
-                "opacity": 95,
+                "name": "Windows PowerShell - Admin",
                 "padding": "8, 8, 8, 8",
                 "snapOnInput": true,
-                "startingDirectory": "C:\\",
-                "tabTitle": "Lets Hack Stuff",
+                "startingDirectory": "%USERPROFILE%",
+                "useAcrylic": false
+            },
+            {
+                "altGrAliasing": true,
+                "antialiasingMode": "grayscale",
+                "background": null,
+                "closeOnExit": "automatic",
+                "colorScheme": "Campbell Powershell",
+                "commandline": "%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+                "cursorShape": "bar",
+                "font": 
+                {
+                    "face": "Cascadia Mono",
+                    "size": 12
+                },
+                "foreground": null,
+                "guid": "{083601ed-c295-46e9-9f47-04f09ad9df51}",
+                "hidden": false,
+                "historySize": 9001,
+                "icon": "ms-appx:///ProfileIcons/{61c54bbd-c2c6-5271-96e7-009a87ff44bf}.png",
+                "name": "Windows PowerShell (Default Colors)",
+                "padding": "8, 8, 8, 8",
+                "snapOnInput": true,
+                "startingDirectory": "%USERPROFILE%",
                 "useAcrylic": false
             }
         ]
@@ -84,9 +121,9 @@
     [
         {
             "background": "#002B36",
-            "black": "#002B36",
+            "black": "#000000",
             "blue": "#268BD2",
-            "brightBlack": "#073642",
+            "brightBlack": "#557D7D",
             "brightBlue": "#6DE7ED",
             "brightCyan": "#93A1A1",
             "brightGreen": "#2BFF00",
