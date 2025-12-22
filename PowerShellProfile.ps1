@@ -108,7 +108,7 @@ function find-file($name) {
 
 #region Import PSModules
 
-If ( Test-Path $clonePath\Modules ){
+If ( Test-Path $clonePath ){
     $modules = Get-ChildItem $clonePath
     foreach ( $module in $modules ){
         Import-Module $module.fullname
