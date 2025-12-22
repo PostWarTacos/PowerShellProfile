@@ -109,7 +109,11 @@ function find-file($name) {
 #region Import PSModules
 
 If ( Test-Path $clonePath ){
-    $modules = Get-ChildItem $clonePath
+    # $modules = Get-ChildItem $clonePath
+    # foreach ( $module in $modules ){
+    #     Import-Module $module.fullname
+    # }
+    $modules = Get-ChildItem $clonePath -Filter *.psd1
     foreach ( $module in $modules ){
         Import-Module $module.fullname
     }
