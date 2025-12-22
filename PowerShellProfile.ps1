@@ -109,7 +109,7 @@ function find-file($name) {
 #region Import PSModules
 
 If ( Test-Path $clonePath\Modules ){
-    $modules = Get-ChildItem $clonePath\Modules
+    $modules = Get-ChildItem $clonePath
     foreach ( $module in $modules ){
         Import-Module $module.fullname
     }
@@ -262,6 +262,8 @@ if (( Get-WmiObject -class win32_OperatingSystem ).ProductType -eq 1 ) {
 }
  
 #endregion
+
+set-location $user
 
 #region Transcript
 
