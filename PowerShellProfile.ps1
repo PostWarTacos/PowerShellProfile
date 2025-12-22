@@ -4,6 +4,21 @@
 # Current User All Hosts PowerShell Profile
 # Set-Content $PROFILE -Value '. "C:\Users\wurtzmt\Documents\Coding\PowerShellProfile\PowerShellProfile.ps1"' -force
 
+#region Internet Connectivity Check
+
+# Check if system reports internet connectivity (query Windows, don't actively test)
+$hasInternet = $false
+try {
+    $connectionProfile = Get-NetConnectionProfile -ErrorAction SilentlyContinue | Where-Object { $_.IPv4Connectivity -eq 'Internet' -or $_.IPv6Connectivity -eq 'Internet' }
+    if ($connectionProfile) {
+        $hasInternet = $true
+    }
+} catch {
+    $hasInternet = $false
+}
+
+#endregion
+
 #region Create Coding Directory
 
 If ( $(whoami) -match "wurtzmt" ){
@@ -36,6 +51,11 @@ $repoURL = "https://github.com/PostWarTacos/Powershell-Modules.git"
 $clonePath = "$user\Documents\Coding\Powershell-Modules"
 
 function Sync-GitModules {
+    if (-not $hasInternet) {
+        Write-Host "No internet connection detected. Skipping git sync."
+        return
+    }
+    
     Write-Host "Prepping Workspace..."
     
     If ( -not ( Test-Path "$clonePath" )){
@@ -205,7 +225,7 @@ if (( Get-WmiObject -class win32_OperatingSystem ).ProductType -eq 1 ) {
         # oh-my-posh
         If ( Get-Command oh-my-posh -ErrorAction SilentlyContinue ){
             $ompConfigPath = "$user\Documents\Coding\PowerShellProfile\OhMyPoshTheme.json"
-            if ( -not ( Test-Path $ompConfigPath )) {
+            if ( -not ( Test-Path $ompConfigPath ) -and $hasInternet) {
                 Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/OhMyPoshTheme.json"`
                     -OutFile $ompConfigPath
             }
@@ -217,14 +237,16 @@ if (( Get-WmiObject -class win32_OperatingSystem ).ProductType -eq 1 ) {
         }        
 
         # Windows Terminal Settings
-        $wtSettingsPath = "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
-        Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/WindowsTerminalSettings.json"`
-            -OutFile $wtSettingsPath
+        if ($hasInternet) {
+            $wtSettingsPath = "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
+            Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/WindowsTerminalSettings.json"`
+                -OutFile $wtSettingsPath
+        }
         
         # WinFetch
         if ( Get-Command WinFetch ){
             $winfetchConfigPath = "$user\.config\winfetch\Config.ps1"
-            if ( -not ( Test-Path $winfetchConfigPath )) {
+            if ( -not ( Test-Path $winfetchConfigPath ) -and $hasInternet) {
                 Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/WinFetchConfig.ps1"`
                     -OutFile $winfetchConfigPath
             }
