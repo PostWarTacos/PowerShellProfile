@@ -4,6 +4,8 @@
 # Current User All Hosts PowerShell Profile
 # Set-Content $PROFILE -Value '. "C:\Users\wurtzmt\Documents\Coding\PowerShellProfile\PowerShellProfile.ps1"' -force
 
+Write-Host "Prepping Workspace..."
+
 #region Internet Connectivity Check
 
 # Check if system reports internet connectivity (query Windows, don't actively test)
@@ -55,9 +57,7 @@ function Sync-GitModules {
         Write-Host "No internet connection detected. Skipping git sync."
         return
     }
-    
-    Write-Host "Prepping Workspace..."
-    
+      
     If ( -not ( Test-Path "$clonePath" )){
         mkdir "$clonePath" | Out-Null
     }
@@ -65,13 +65,19 @@ function Sync-GitModules {
         Set-Location $clonePath
         git init 2>&1 | Out-Null
         git remote add origin $repoURL 2>&1 | Out-Null
+        git pull origin main 2>&1 | Out-Null
+        return
     }
 
     Set-Location $clonePath
-    git pull origin main 2>&1 | Out-Null
-    git add . 2>&1 | Out-Null
-    git commit -m "Auto-sync PowerShell Modules on $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" 2>&1 | Out-Null
-    git push origin main 2>&1 | Out-Null
+    # Check if there are remote changes before pulling
+    git fetch origin main 2>&1 | Out-Null
+    $localHash = git rev-parse HEAD 2>&1
+    $remoteHash = git rev-parse origin/main 2>&1
+    
+    if ($localHash -ne $remoteHash) {
+        git pull origin main 2>&1 | Out-Null
+    }
 }
 
 # Sync custom PowerShell modules automatically when PowerShell starts
