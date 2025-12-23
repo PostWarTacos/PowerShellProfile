@@ -36,40 +36,98 @@ If ( -not ( Test-Path "$user\Documents\Coding" )){
 
 #endregion
 
-#region PowerShell Modules Auto Git Sync
+#region Install/Update Winget
 
-# Check if git is installed, install if needed
-If ( -not ( Get-Command git -ErrorAction SilentlyContinue )) {
-    If ( Get-Command winget -ErrorAction SilentlyContinue ) {
-        winget install --id Git.Git -e --source winget --silent
-    } ElseIf ( Get-Command choco -ErrorAction SilentlyContinue ) {
-        choco install git -y
-    } Else {
-        Write-Host "Please install Git manually from https://git-scm.com/download/win"
+# Check if winget is available
+$hasWinget = [bool](Get-Command winget -ErrorAction SilentlyContinue)
+
+function Sync-Winget {
+    param($hasInternet)
+    
+    if (-not $hasInternet) {
+        return
+    }
+    
+    # Install winget if needed (Windows 10 1809+ / Server 2022+)
+    If ( -not ( Get-Command winget -ErrorAction SilentlyContinue )) {
+        try {
+            Write-Host "Installing winget..."
+            $progressPreference = 'silentlyContinue'
+            Invoke-WebRequest -Uri https://aka.ms/getwinget -OutFile "$env:TEMP\Microsoft.DesktopAppInstaller.msixbundle"
+            Add-AppxPackage "$env:TEMP\Microsoft.DesktopAppInstaller.msixbundle"
+        } catch {
+            Write-Host "Failed to install winget. Please install manually via https://aka.ms/getwinget."
+            return
+        }
+    }
+    
+    # Check if winget was updated in the last week
+    $lastWingetUpdateFile = "$env:TEMP\.lastwingetupdate"
+    $shouldUpdate = $true
+    
+    if (Test-Path $lastWingetUpdateFile) {
+        $lastTimestamp = Get-Content $lastWingetUpdateFile -ErrorAction SilentlyContinue
+        if ($lastTimestamp) {
+            $lastUpdate = [DateTime]::ParseExact($lastTimestamp, "yyyyMMddHHmmss", $null)
+            $daysSinceLastUpdate = ((Get-Date) - $lastUpdate).TotalDays
+            if ($daysSinceLastUpdate -lt 7) {
+                $shouldUpdate = $false
+            }
+        }
+    }
+    
+    if ($shouldUpdate -and (Get-Command winget -ErrorAction SilentlyContinue)) {
+        winget upgrade --id Microsoft.AppInstaller -e --silent --accept-package-agreements --accept-source-agreements 2>&1 | Out-Null
+        (Get-Date -Format "yyyyMMddHHmmss") | Out-File $lastWingetUpdateFile -Force
     }
 }
+
+# Sync winget in background (non-blocking)
+Start-Job -ScriptBlock ${function:Sync-Winget} -ArgumentList $hasInternet | Out-Null
+
+#endregion
+
+#region PowerShell Modules Auto Git Sync
 
 $repoURL = "https://github.com/PostWarTacos/Powershell-Modules.git"
 $clonePath = "$user\Documents\Coding\Powershell-Modules"
 
 function Sync-GitModules {
+    param($clonePath, $repoURL, $hasInternet)
+    
     if (-not $hasInternet) {
-        Write-Host "No internet connection detected. Skipping git sync."
         return
+    }
+    
+    # Check if git is installed, install if needed
+    If ( -not ( Get-Command git -ErrorAction SilentlyContinue )) {
+        If ( $hasWinget ) {
+            try {
+                Write-Host "Installing git..."
+                winget install --id Git.Git -e --source winget --silent --accept-package-agreements --accept-source-agreements
+            } catch {
+                Write-Host "Failed to install git via winget. Please install manually via https://git-scm.com/download/win"
+                return
+            }
+        }
+        else {
+            return
+        }
     }
       
     If ( -not ( Test-Path "$clonePath" )){
-        mkdir "$clonePath" | Out-Null
+        New-Item -Path "$clonePath" -ItemType Directory -Force | Out-Null
     }
+    
+    Set-Location $clonePath
+    
     if ( -not ( Test-Path "$clonePath\.git" )) {
-        Set-Location $clonePath
         git init 2>&1 | Out-Null
         git remote add origin $repoURL 2>&1 | Out-Null
         git pull origin main 2>&1 | Out-Null
         return
     }
 
-    Set-Location $clonePath
     # Check if there are remote changes before pulling
     git fetch origin main 2>&1 | Out-Null
     $localHash = git rev-parse HEAD 2>&1
@@ -80,8 +138,8 @@ function Sync-GitModules {
     }
 }
 
-# Sync custom PowerShell modules automatically when PowerShell starts
-Sync-GitModules
+# Sync custom PowerShell modules in background (non-blocking)
+Start-Job -ScriptBlock ${function:Sync-GitModules} -ArgumentList $clonePath, $repoURL, $hasInternet | Out-Null
 
 #endregion
 
@@ -218,19 +276,21 @@ Set-PSReadLineKeyHandler -Key RightArrow `
 
 # Test if machine is a server. Don't run these commands if it is
 # Product type 1 = Workstation. 2 = Domain controller. 3 = non-DC server.
-if (( Get-WmiObject -class win32_OperatingSystem ).ProductType -eq 1 ) {
+if (( Get-CimInstance -ClassName Win32_OperatingSystem ).ProductType -eq 1 ) {
     # Download configs and apply locally
     # Only load in modern terminals (not ISE)
     if ( $env:WT_SESSION ) {
 	           
         # Install Nerd Font if not already installed
         $nerdFontInstalled = Test-Path "$env:LOCALAPPDATA\Microsoft\Windows\Fonts\JetBrainsMonoNerdFont*.ttf"
-        if ( -not $nerdFontInstalled ) {
+        if ( -not $nerdFontInstalled -and $hasInternet -and $hasWinget ) {
             winget install --id=DEVCOM.JetBrainsMonoNerdFont -e --source=winget --silent 2>&1 | Out-Null
         }
         
         # Terminal Icons
-        Import-Module -Name Terminal-Icons
+        If ( $hasInternet ) {
+            Import-Module -Name Terminal-Icons
+        }
 
         # oh-my-posh
         If ( Get-Command oh-my-posh -ErrorAction SilentlyContinue ){
@@ -253,14 +313,33 @@ if (( Get-WmiObject -class win32_OperatingSystem ).ProductType -eq 1 ) {
                 -OutFile $wtSettingsPath
         }
         
-        # WinFetch
+        # WinFetch - Only show once every 3 hours
         if ( Get-Command WinFetch ){
             $winfetchConfigPath = "$user\.config\winfetch\Config.ps1"
             if ( -not ( Test-Path $winfetchConfigPath ) -and $hasInternet) {
                 Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/WinFetchConfig.ps1"`
                     -OutFile $winfetchConfigPath
             }
-            winfetch -configpath $winfetchConfigPath
+            
+            # Check if WinFetch was shown in the last 3 hours
+            $lastWinFetchFile = "$env:TEMP\.lastwinfetch"
+            $showWinFetch = $true
+            
+            if (Test-Path $lastWinFetchFile) {
+                $lastTimestamp = Get-Content $lastWinFetchFile -ErrorAction SilentlyContinue
+                if ($lastTimestamp) {
+                    $lastRun = [DateTime]::ParseExact($lastTimestamp, "yyyyMMddHHmmss", $null)
+                    $hoursSinceLastRun = ((Get-Date) - $lastRun).TotalHours
+                    if ($hoursSinceLastRun -lt 3) {
+                        $showWinFetch = $false
+                    }
+                }
+            }
+            
+            if ($showWinFetch) {
+                winfetch -configpath $winfetchConfigPath
+                (Get-Date -Format "yyyyMMddHHmmss") | Out-File $lastWinFetchFile -Force
+            }
         }
     }
 }
