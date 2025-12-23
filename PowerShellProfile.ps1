@@ -1,10 +1,14 @@
-# All Users All Hosts PowerShell Profile
+﻿# All Users All Hosts PowerShell Profile
 # Set-Content -Path "C:\Windows\System32\WindowsPowerShell\v1.0\profile.ps1" -Value '. "C:\Users\wurtzmt\Documents\Coding\PowerShellProfile\PowerShellProfile.ps1"' -Force
 
 # Current User All Hosts PowerShell Profile
 # Set-Content $PROFILE -Value '. "C:\Users\wurtzmt\Documents\Coding\PowerShellProfile\PowerShellProfile.ps1"' -force
 
-Write-Host "Prepping Workspace..."
+$ErrorActionPreference = 'SilentlyContinue'
+
+Clear-Host
+
+Write-Host "Loading profile..." -ForegroundColor Cyan
 
 #region Internet Connectivity Check
 
@@ -143,7 +147,7 @@ Start-Job -ScriptBlock ${function:Sync-GitModules} -ArgumentList $moduleClonePat
 
 #endregion
 
-#region Linux-like Commands
+#region Custom Functions
 
 # grep
 function grep($regex, $dir) {
@@ -162,12 +166,50 @@ function find-file($name) {
     }
 }
 
+# Lazy-load Terminal-Icons wrapper functions (aliases ls, gci, dir automatically use Get-ChildItem)
+function Get-ChildItem {
+    if (-not $script:terminalIconsLoaded) {
+        try {
+            Import-Module -Name Terminal-Icons -ErrorAction Stop
+            $script:terminalIconsLoaded = $true
+        } catch {
+            # Module not available, continue without icons
+        }
+    }
+    Microsoft.PowerShell.Management\Get-ChildItem @args
+}
+
+function Get-Item {
+    if (-not $script:terminalIconsLoaded) {
+        try {
+            Import-Module -Name Terminal-Icons -ErrorAction Stop
+            $script:terminalIconsLoaded = $true
+        } catch {
+            # Module not available, continue without icons
+        }
+    }
+    Microsoft.PowerShell.Management\Get-Item @args
+}
+
+function Get-ItemProperty {
+    if (-not $script:terminalIconsLoaded) {
+        try {
+            Import-Module -Name Terminal-Icons -ErrorAction Stop
+            $script:terminalIconsLoaded = $true
+        } catch {
+            # Module not available, continue without icons
+        }
+    }
+    Microsoft.PowerShell.Management\Get-ItemProperty @args
+}
+
 #endregion
 
 #region Add Custom Module Path
 
 # Add custom module path to PSModulePath for auto-loading
-# This is instead of using Import-Module for each module
+# Note: Modules must be in subdirectories matching their names for auto-loading to work
+# Example: Powershell-Modules\ModuleName\ModuleName.psd1
 If ( Test-Path $moduleClonePath ){
     $env:PSModulePath = "$moduleClonePath;$env:PSModulePath"
 }
@@ -183,15 +225,11 @@ if (( Get-CimInstance -ClassName Win32_OperatingSystem ).ProductType -eq 1 ) {
     # Only load in modern terminals (not ISE)
     if ( $env:WT_SESSION ) {
 	           
-        # Install Nerd Font if not already installed
-        $nerdFontInstalled = Test-Path "$env:LOCALAPPDATA\Microsoft\Windows\Fonts\JetBrainsMonoNerdFont*.ttf"
+        # Install Nerd Font if not already installed (using .NET for faster check)
+        $nerdFontInstalled = Test-Path "C:\Windows\Fonts\JetBrainsMonoNerdFont-Bold.ttf"
         if ( -not $nerdFontInstalled -and $hasInternet -and $hasWinget ) {
+            Write-Host "Installing JetBrains Mono Nerd Font..."
             winget install --id=DEVCOM.JetBrainsMonoNerdFont -e --source=winget --silent 2>&1 | Out-Null
-        }
-        
-        # Terminal Icons
-        If ( $hasInternet ) {
-            Import-Module -Name Terminal-Icons
         }
 
         # oh-my-posh
@@ -202,9 +240,9 @@ if (( Get-CimInstance -ClassName Win32_OperatingSystem ).ProductType -eq 1 ) {
                     -OutFile $ompConfigPath
             }
             if ($PSVersionTable.PSVersion.Major -ge 6) {
-                oh-my-posh init pwsh --config $ompConfigPath 2>$null | Invoke-Expression
+                Invoke-Expression (oh-my-posh init pwsh --config $ompConfigPath)
             } else {
-                oh-my-posh init powershell --config $ompConfigPath 2>$null | Invoke-Expression
+                Invoke-Expression (oh-my-posh init powershell --config $ompConfigPath)
             }
         }        
 
@@ -341,6 +379,7 @@ Set-PSReadLineKeyHandler -Key RightArrow `
 
 #endregion
 
+$ErrorActionPreference = 'Continue'
 set-location $user
 
 #region Transcript
