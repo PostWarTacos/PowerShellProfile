@@ -90,10 +90,10 @@ Start-Job -ScriptBlock ${function:Sync-Winget} -ArgumentList $hasInternet | Out-
 #region PowerShell Modules Auto Git Sync
 
 $repoURL = "https://github.com/PostWarTacos/Powershell-Modules.git"
-$clonePath = "$user\Documents\Coding\Powershell-Modules"
+$moduleClonePath = "$user\Documents\Coding\Powershell-Modules"
 
 function Sync-GitModules {
-    param($clonePath, $repoURL, $hasInternet)
+    param($moduleClonePath, $repoURL, $hasInternet)
     
     if (-not $hasInternet) {
         return
@@ -115,13 +115,13 @@ function Sync-GitModules {
         }
     }
       
-    If ( -not ( Test-Path "$clonePath" )){
-        New-Item -Path "$clonePath" -ItemType Directory -Force | Out-Null
+    If ( -not ( Test-Path "$moduleClonePath" )){
+        New-Item -Path "$moduleClonePath" -ItemType Directory -Force | Out-Null
     }
     
-    Set-Location $clonePath
+    Set-Location $moduleClonePath
     
-    if ( -not ( Test-Path "$clonePath\.git" )) {
+    if ( -not ( Test-Path "$moduleClonePath\.git" )) {
         git init 2>&1 | Out-Null
         git remote add origin $repoURL 2>&1 | Out-Null
         git pull origin main 2>&1 | Out-Null
@@ -139,7 +139,7 @@ function Sync-GitModules {
 }
 
 # Sync custom PowerShell modules in background (non-blocking)
-Start-Job -ScriptBlock ${function:Sync-GitModules} -ArgumentList $clonePath, $repoURL, $hasInternet | Out-Null
+Start-Job -ScriptBlock ${function:Sync-GitModules} -ArgumentList $moduleClonePath, $repoURL, $hasInternet | Out-Null
 
 #endregion
 
@@ -164,19 +164,88 @@ function find-file($name) {
 
 #endregion
 
-#region Import PSModules
+#region Add Custom Module Path
 
-If ( Test-Path $clonePath ){
-    # $modules = Get-ChildItem $clonePath
-    # foreach ( $module in $modules ){
-    #     Import-Module $module.fullname
-    # }
-    $modules = Get-ChildItem $clonePath -Filter *.psd1
-    foreach ( $module in $modules ){
-        Import-Module $module.fullname
-    }
+# Add custom module path to PSModulePath for auto-loading
+# This is instead of using Import-Module for each module
+If ( Test-Path $moduleClonePath ){
+    $env:PSModulePath = "$moduleClonePath;$env:PSModulePath"
 }
 
+#endregion
+
+#region Cosmetics
+
+# Test if machine is a server. Don't run these commands if it is
+# Product type 1 = Workstation. 2 = Domain controller. 3 = non-DC server.
+if (( Get-CimInstance -ClassName Win32_OperatingSystem ).ProductType -eq 1 ) {
+    # Download configs and apply locally
+    # Only load in modern terminals (not ISE)
+    if ( $env:WT_SESSION ) {
+	           
+        # Install Nerd Font if not already installed
+        $nerdFontInstalled = Test-Path "$env:LOCALAPPDATA\Microsoft\Windows\Fonts\JetBrainsMonoNerdFont*.ttf"
+        if ( -not $nerdFontInstalled -and $hasInternet -and $hasWinget ) {
+            winget install --id=DEVCOM.JetBrainsMonoNerdFont -e --source=winget --silent 2>&1 | Out-Null
+        }
+        
+        # Terminal Icons
+        If ( $hasInternet ) {
+            Import-Module -Name Terminal-Icons
+        }
+
+        # oh-my-posh
+        If ( Get-Command oh-my-posh -ErrorAction SilentlyContinue ){
+            $ompConfigPath = "$user\Documents\Coding\PowerShellProfile\OhMyPoshTheme.json"
+            if ( -not ( Test-Path $ompConfigPath ) -and $hasInternet) {
+                Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/OhMyPoshTheme.json"`
+                    -OutFile $ompConfigPath
+            }
+            if ($PSVersionTable.PSVersion.Major -ge 6) {
+                oh-my-posh init pwsh --config $ompConfigPath 2>$null | Invoke-Expression
+            } else {
+                oh-my-posh init powershell --config $ompConfigPath 2>$null | Invoke-Expression
+            }
+        }        
+
+        # Windows Terminal Settings
+        if ($hasInternet) {
+            $wtSettingsPath = "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
+            Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/WindowsTerminalSettings.json"`
+                -OutFile $wtSettingsPath
+        }
+        
+        # WinFetch - Only show once every 3 hours
+        if ( Get-Command WinFetch ){
+            $winfetchConfigPath = "$user\.config\winfetch\Config.ps1"
+            if ( -not ( Test-Path $winfetchConfigPath ) -and $hasInternet) {
+                Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/WinFetchConfig.ps1"`
+                    -OutFile $winfetchConfigPath
+            }
+            
+            # Check if WinFetch was shown in the last 3 hours
+            $lastWinFetchFile = "$env:TEMP\.lastwinfetch"
+            $showWinFetch = $true
+            
+            if (Test-Path $lastWinFetchFile) {
+                $lastTimestamp = Get-Content $lastWinFetchFile -ErrorAction SilentlyContinue
+                if ($lastTimestamp) {
+                    $lastRun = [DateTime]::ParseExact($lastTimestamp, "yyyyMMddHHmmss", $null)
+                    $hoursSinceLastRun = ((Get-Date) - $lastRun).TotalHours
+                    if ($hoursSinceLastRun -lt 3) {
+                        $showWinFetch = $false
+                    }
+                }
+            }
+            
+            if ($showWinFetch) {
+                winfetch -configpath $winfetchConfigPath
+                (Get-Date -Format "yyyyMMddHHmmss") | Out-File $lastWinFetchFile -Force
+            }
+        }
+    }
+}
+ 
 #endregion
 
 #region PSReadLineOptions
@@ -270,80 +339,6 @@ Set-PSReadLineKeyHandler -Key RightArrow `
     }
 }
 
-#endregion
-
-#region Cosmetics
-
-# Test if machine is a server. Don't run these commands if it is
-# Product type 1 = Workstation. 2 = Domain controller. 3 = non-DC server.
-if (( Get-CimInstance -ClassName Win32_OperatingSystem ).ProductType -eq 1 ) {
-    # Download configs and apply locally
-    # Only load in modern terminals (not ISE)
-    if ( $env:WT_SESSION ) {
-	           
-        # Install Nerd Font if not already installed
-        $nerdFontInstalled = Test-Path "$env:LOCALAPPDATA\Microsoft\Windows\Fonts\JetBrainsMonoNerdFont*.ttf"
-        if ( -not $nerdFontInstalled -and $hasInternet -and $hasWinget ) {
-            winget install --id=DEVCOM.JetBrainsMonoNerdFont -e --source=winget --silent 2>&1 | Out-Null
-        }
-        
-        # Terminal Icons
-        If ( $hasInternet ) {
-            Import-Module -Name Terminal-Icons
-        }
-
-        # oh-my-posh
-        If ( Get-Command oh-my-posh -ErrorAction SilentlyContinue ){
-            $ompConfigPath = "$user\Documents\Coding\PowerShellProfile\OhMyPoshTheme.json"
-            if ( -not ( Test-Path $ompConfigPath ) -and $hasInternet) {
-                Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/OhMyPoshTheme.json"`
-                    -OutFile $ompConfigPath
-            }
-            if ($PSVersionTable.PSVersion.Major -ge 6) {
-                oh-my-posh init pwsh --config $ompConfigPath | Invoke-Expression
-            } else {
-                oh-my-posh init powershell --config $ompConfigPath | Invoke-Expression
-            }
-        }        
-
-        # Windows Terminal Settings
-        if ($hasInternet) {
-            $wtSettingsPath = "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
-            Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/WindowsTerminalSettings.json"`
-                -OutFile $wtSettingsPath
-        }
-        
-        # WinFetch - Only show once every 3 hours
-        if ( Get-Command WinFetch ){
-            $winfetchConfigPath = "$user\.config\winfetch\Config.ps1"
-            if ( -not ( Test-Path $winfetchConfigPath ) -and $hasInternet) {
-                Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/WinFetchConfig.ps1"`
-                    -OutFile $winfetchConfigPath
-            }
-            
-            # Check if WinFetch was shown in the last 3 hours
-            $lastWinFetchFile = "$env:TEMP\.lastwinfetch"
-            $showWinFetch = $true
-            
-            if (Test-Path $lastWinFetchFile) {
-                $lastTimestamp = Get-Content $lastWinFetchFile -ErrorAction SilentlyContinue
-                if ($lastTimestamp) {
-                    $lastRun = [DateTime]::ParseExact($lastTimestamp, "yyyyMMddHHmmss", $null)
-                    $hoursSinceLastRun = ((Get-Date) - $lastRun).TotalHours
-                    if ($hoursSinceLastRun -lt 3) {
-                        $showWinFetch = $false
-                    }
-                }
-            }
-            
-            if ($showWinFetch) {
-                winfetch -configpath $winfetchConfigPath
-                (Get-Date -Format "yyyyMMddHHmmss") | Out-File $lastWinFetchFile -Force
-            }
-        }
-    }
-}
- 
 #endregion
 
 set-location $user
