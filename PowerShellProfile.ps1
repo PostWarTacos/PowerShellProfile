@@ -4,6 +4,16 @@
 # Current User All Hosts PowerShell Profile
 # Set-Content $PROFILE -Value '. "C:\Users\wurtzmt\Documents\Coding\PowerShellProfile\PowerShellProfile.ps1"' -force
 
+#region Telemetry Opt-Out
+
+# Opt-out of PowerShell telemetry if running as admin
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if ($isAdmin) {
+    [System.Environment]::SetEnvironmentVariable('POWERSHELL_TELEMETRY_OPTOUT', 'true', [System.EnvironmentVariableTarget]::Machine)
+}
+
+#endregion
+
 $ErrorActionPreference = 'SilentlyContinue'
 
 Clear-Host
@@ -148,6 +158,35 @@ Start-Job -ScriptBlock ${function:Sync-GitModules} -ArgumentList $moduleClonePat
 #endregion
 
 #region Custom Functions
+
+# Profile Management
+function Update-Profile {
+    <#
+    .SYNOPSIS
+        Updates PowerShell profile from GitHub repository
+    #>
+    try {
+        $profileUrl = "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/PowerShellProfile.ps1"
+        $currentProfilePath = "$user\Documents\Coding\PowerShellProfile\PowerShellProfile.ps1"
+        
+        Write-Host "Checking for profile updates..." -ForegroundColor Cyan
+        
+        $oldhash = Get-FileHash $currentProfilePath -ErrorAction Stop
+        Invoke-RestMethod $profileUrl -OutFile "$env:temp\PowerShellProfile.ps1"
+        $newhash = Get-FileHash "$env:temp\PowerShellProfile.ps1"
+        
+        if ($newhash.Hash -ne $oldhash.Hash) {
+            Copy-Item -Path "$env:temp\PowerShellProfile.ps1" -Destination $currentProfilePath -Force
+            Write-Host "Profile has been updated. Please restart your shell to reflect changes" -ForegroundColor Magenta
+        } else {
+            Write-Host "Profile is up to date." -ForegroundColor Green
+        }
+    } catch {
+        Write-Error "Unable to check for profile updates: $_"
+    } finally {
+        Remove-Item "$env:temp\PowerShellProfile.ps1" -ErrorAction SilentlyContinue
+    }
+}
 
 # System Utilities
 function admin {
