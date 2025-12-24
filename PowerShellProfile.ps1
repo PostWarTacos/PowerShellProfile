@@ -149,27 +149,26 @@ Start-Job -ScriptBlock ${function:Sync-GitModules} -ArgumentList $moduleClonePat
 
 #region Custom Functions
 
-# grep
-function grep($regex, $dir) {
-    if ( $dir ) {
-            Get-ChildItem $dir | select-string $regex
-            return
+# System Utilities
+function admin {
+    if ($args.Count -gt 0) {
+        $argList = $args -join ' '
+        Start-Process wt -Verb runAs -ArgumentList "pwsh.exe -NoExit -Command $argList"
+    } else {
+        Start-Process wt -Verb runAs
     }
-    $input | select-string $regex
 }
 
-# find-file
-function find-file($name) {
-    Get-ChildItem -recurse -filter "*${name}*" -ErrorAction SilentlyContinue | ForEach-Object {
-            $place_path = $_.directory
-            Write-Output "${place_path}\${_}"
-    }
-}
+# Set UNIX-like aliases for the admin command, so sudo <command> will run the command with elevated rights.
+Set-Alias -Name su -Value admin
 
 # Lazy-load Terminal-Icons wrapper functions (aliases ls, gci, dir automatically use Get-ChildItem)
 function Get-ChildItem {
     if (-not $script:terminalIconsLoaded) {
         try {
+            if (-not (Get-Module -ListAvailable -Name Terminal-Icons)) {
+                Install-Module -Name Terminal-Icons -Scope CurrentUser -Force -SkipPublisherCheck
+            }
             Import-Module -Name Terminal-Icons -ErrorAction Stop
             $script:terminalIconsLoaded = $true
         } catch {
@@ -182,6 +181,9 @@ function Get-ChildItem {
 function Get-Item {
     if (-not $script:terminalIconsLoaded) {
         try {
+            if (-not (Get-Module -ListAvailable -Name Terminal-Icons)) {
+                Install-Module -Name Terminal-Icons -Scope CurrentUser -Force -SkipPublisherCheck
+            }
             Import-Module -Name Terminal-Icons -ErrorAction Stop
             $script:terminalIconsLoaded = $true
         } catch {
@@ -194,6 +196,9 @@ function Get-Item {
 function Get-ItemProperty {
     if (-not $script:terminalIconsLoaded) {
         try {
+            if (-not (Get-Module -ListAvailable -Name Terminal-Icons)) {
+                Install-Module -Name Terminal-Icons -Scope CurrentUser -Force -SkipPublisherCheck
+            }
             Import-Module -Name Terminal-Icons -ErrorAction Stop
             $script:terminalIconsLoaded = $true
         } catch {
@@ -207,7 +212,7 @@ function Get-ItemProperty {
 
 #region Add Custom Module Path
 
-# Add custom module path to PSModulePath for auto-loading
+# Add my ..\Coding\PowerShell-Modules folder for custom my modules to PSModulePath for auto-loading
 # Note: Modules must be in subdirectories matching their names for auto-loading to work
 # Example: Powershell-Modules\ModuleName\ModuleName.psd1
 If ( Test-Path $moduleClonePath ){
