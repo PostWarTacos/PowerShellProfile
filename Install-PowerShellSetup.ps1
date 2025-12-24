@@ -51,9 +51,11 @@ param(
 $ErrorActionPreference = 'Stop'
 
 Clear-Host
-Write-Host "`n========================================" -ForegroundColor Cyan
+Write-Host
+Write-Host "========================================" -ForegroundColor Cyan
 Write-Host " PowerShell Environment Setup" -ForegroundColor Cyan
-Write-Host "========================================`n" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host
 
 # Check for admin rights
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -317,7 +319,8 @@ try {
 Write-Host
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host " Installation Complete!" -ForegroundColor Green
-Write-Host "========================================`n" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host
 
 Write-Host "Profile Location: " -ForegroundColor White -NoNewline
 Write-Host $profilePath -ForegroundColor Yellow
