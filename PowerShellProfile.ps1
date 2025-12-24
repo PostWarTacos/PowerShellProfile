@@ -161,10 +161,6 @@ Start-Job -ScriptBlock ${function:Sync-GitModules} -ArgumentList $moduleClonePat
 
 # Profile Management
 function Update-Profile {
-    <#
-    .SYNOPSIS
-        Updates PowerShell profile from GitHub repository
-    #>
     try {
         $profileUrl = "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/PowerShellProfile.ps1"
         $currentProfilePath = "$user\Documents\Coding\PowerShellProfile\PowerShellProfile.ps1"
