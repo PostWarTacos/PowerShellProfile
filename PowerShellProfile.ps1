@@ -101,6 +101,31 @@ Start-Job -ScriptBlock ${function:Sync-Winget} -ArgumentList $hasInternet | Out-
 
 #endregion
 
+#region Install/Update winfetch
+
+function Sync-Winfetch {
+    param($hasInternet)
+    
+    if (-not $hasInternet) {
+        return
+    }
+    
+    # Install winfetch if not installed
+    if (-not (Get-Command winfetch -ErrorAction SilentlyContinue)) {
+        try {
+            Install-Script -Name winfetch -Force -Scope CurrentUser -ErrorAction Stop
+        } catch {
+            # Silent fail - not critical
+            return
+        }
+    }
+}
+
+# Sync winfetch in background (non-blocking)
+Start-Job -ScriptBlock ${function:Sync-Winfetch} -ArgumentList $hasInternet | Out-Null
+
+#endregion
+
 #region PowerShell Modules Auto Git Sync
 
 $repoURL = "https://github.com/PostWarTacos/Powershell-Modules.git"
