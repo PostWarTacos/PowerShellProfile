@@ -379,13 +379,13 @@ if (( Get-CimInstance -ClassName Win32_OperatingSystem ).ProductType -eq 1 ) {
                 Invoke-Expression (oh-my-posh init powershell --config $ompConfigPath)
             }
             
-            # Set window title after oh-my-posh to ensure it doesn't get overridden
-            $isCurrentlyElevated = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-            if ($isCurrentlyElevated) {
-                $host.ui.RawUI.WindowTitle = "Admin: PowerShell"
-            } else {
-                $host.ui.RawUI.WindowTitle = "User: PowerShell"
-            }
+            # # Set window title after oh-my-posh to ensure it doesn't get overridden
+            # $isCurrentlyElevated = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+            # if ($isCurrentlyElevated) {
+            #     $host.ui.RawUI.WindowTitle = "Admin: PowerShell"
+            # } else {
+            #     $host.ui.RawUI.WindowTitle = "User: PowerShell"
+            # }
         }        
 
         # Windows Terminal Settings - Check daily for updates using hash comparison
