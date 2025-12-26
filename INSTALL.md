@@ -5,11 +5,8 @@ Quick installation script for setting up a complete PowerShell environment with 
 ## Quick Install
 
 ### One-Line Installation
-
-**Important:** Replace `USERNAME` with your actual GitHub username before running!
-
 ```powershell
-irm https://raw.githubusercontent.com/USERNAME/PowerShellProfile/main/Install-PowerShellSetup.ps1 | iex
+irm https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/main/Install-PowerShellSetup.ps1 | iex
 ```
 
 ## What Gets Installed
@@ -138,7 +135,7 @@ If you prefer to install manually:
 
 If you get an execution policy error:
 ```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope CurrentUser
 ```
 
 ### Oh My Posh Not Found
