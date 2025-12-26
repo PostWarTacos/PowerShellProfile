@@ -292,6 +292,29 @@ if ($currentPSModulePath -notlike "*$modulesPath*") {
     Write-Host "[+] $modulesPath already in PSModulePath" -ForegroundColor Green
 }
 
+# Clear existing profiles for clean slate
+Write-Host
+Write-Host "[*] Clearing existing profiles..." -ForegroundColor Cyan
+$profilesToClear = @($PROFILE.AllUsersAllHosts, $PROFILE.AllUsersCurrentHost, $PROFILE.CurrentUserAllHosts, $PROFILE.CurrentUserCurrentHost)
+foreach ($profilePath in $profilesToClear) {
+    if (Test-Path $profilePath) {
+        Set-Content -Path $profilePath -Value "" -Force
+        Write-Host "[+] Cleared: $profilePath" -ForegroundColor Green
+    }
+}
+
+# Also clear PowerShell 5.1 profiles
+$ps51Profiles = @(
+    "$HOME\Documents\WindowsPowerShell\profile.ps1",
+    "$HOME\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1"
+)
+foreach ($profilePath in $ps51Profiles) {
+    if (Test-Path $profilePath) {
+        Set-Content -Path $profilePath -Value "" -Force
+        Write-Host "[+] Cleared PS 5.1: $profilePath" -ForegroundColor Green
+    }
+}
+
 # Configure PowerShell Profile
 Write-Host
 Write-Host "[*] Configuring PowerShell Profile..." -ForegroundColor Cyan
@@ -305,7 +328,7 @@ $profileContent = @"
 # Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
 
 # Load the main PowerShell profile
-. "$($profilePath -replace '\\','\\')\PowerShellProfile.ps1"
+. "$profilePath\PowerShellProfile.ps1"
 "@
 
 try {
