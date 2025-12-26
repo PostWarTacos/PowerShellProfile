@@ -219,11 +219,27 @@ function Update-Profile {
 
 # System Utilities
 function admin {
-    if ($args.Count -gt 0) {
-        $argList = $args -join ' '
-        Start-Process wt -Verb runAs -ArgumentList "pwsh.exe -NoExit -Command $argList"
+    # Check if current user account is a member of the local Administrators group
+    $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $adminSid = [Security.Principal.SecurityIdentifier]'S-1-5-32-544'
+    $isInAdminGroup = $currentUser.Groups -contains $adminSid
+    
+    if ($isInAdminGroup) {
+        # User account is in Administrators group, use UAC elevation
+        if ($args.Count -gt 0) {
+            $argList = $args -join ' '
+            Start-Process wt -Verb runAs -ArgumentList "pwsh.exe -NoExit -Command $argList"
+        } else {
+            Start-Process wt -Verb runAs
+        }
     } else {
-        Start-Process wt -Verb runAs
+        # User account is not in Administrators group, prompt for credentials
+        if ($args.Count -gt 0) {
+            $argList = $args -join ' '
+            Start-Process wt -Credential (Get-Credential) -ArgumentList "pwsh.exe -NoExit -Command $argList"
+        } else {
+            Start-Process wt -Credential (Get-Credential)
+        }
     }
 }
 
