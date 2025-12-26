@@ -143,8 +143,9 @@ if (-not $SkipPrerequisites) {
     Write-Host "  Checking Terminal-Icons..." -ForegroundColor Gray
     if (-not (Get-Module -ListAvailable Terminal-Icons)) {
         try {
-            Install-Module -Name Terminal-Icons -Force -Scope CurrentUser
-            Write-Host "[+] Installed Terminal-Icons" -ForegroundColor Green
+            $scope = if ($isAdmin) { "AllUsers" } else { "CurrentUser" }
+            Install-Module -Name Terminal-Icons -Force -Scope $scope
+            Write-Host "[+] Installed Terminal-Icons ($scope scope)" -ForegroundColor Green
         } catch {
             Write-Host "[!] Could not install Terminal-Icons: $_" -ForegroundColor Yellow
         }
