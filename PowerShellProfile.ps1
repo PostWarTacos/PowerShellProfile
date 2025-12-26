@@ -6,8 +6,15 @@
 
 #region Telemetry Opt-Out
 
-# Opt-out of PowerShell telemetry if running as admin
-$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+# Check if user account is in the local Administrators group (not if currently elevated)
+$currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
+$adminSid = [Security.Principal.SecurityIdentifier]'S-1-5-32-544'
+$isInAdminGroup = $currentUser.Groups -contains $adminSid
+
+# Check if currently running elevated
+$isAdmin = ([Security.Principal.WindowsPrincipal]$currentUser).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+# Opt-out of PowerShell telemetry if currently running as admin
 if ($isAdmin) {
     try {
         # Only set if not already configured to avoid unnecessary system calls
@@ -218,47 +225,58 @@ function Update-Profile {
 }
 
 # System Utilities
-function admin {
-    # Check if current user account is a member of the local Administrators group
-    $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
-    $adminSid = [Security.Principal.SecurityIdentifier]'S-1-5-32-544'
-    $isInAdminGroup = $currentUser.Groups -contains $adminSid
-    
-    if ($args.Count -gt 0) {
-        $argList = $args -join ' '
-        if ($isInAdminGroup) {
-            # User is admin, use UAC elevation with PowerShell console
-            Start-Process wt.exe -Verb runAs -ArgumentList "-- powershell.exe -NoExit -Command `"$argList`""
-        } else {
-            # User is not admin, prompt for credentials
-            $cred = Get-Credential -Message "Enter admin credentials"
-            if ($cred) {
-                Start-Process wt.exe -Credential $cred -ArgumentList "-- powershell.exe -NoExit -Command `"$argList`""
-            }
-        }
-    } else {
-        if ($isInAdminGroup) {
-            # User is admin, use UAC elevation
-            Start-Process wt.exe -Verb runAs
-        } else {
-            # User is not admin, prompt for credentials
-            $cred = Get-Credential -Message "Enter admin credentials"
-            if ($cred) {
-                Start-Process wt.exe -Credential $cred
-            }
-        }
-    }
-}
+# DISABLED - function not elevating properly
+# function admin {
+#     # Check if current user account is a member of the local Administrators group
+#     $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
+#     $adminSid = [Security.Principal.SecurityIdentifier]'S-1-5-32-544'
+#     $isInAdminGroup = $currentUser.Groups -contains $adminSid
+#     
+#     if ($args.Count -gt 0) {
+#         $argList = $args -join ' '
+#         if ($isInAdminGroup) {
+#             # User is admin, use UAC elevation with PowerShell console
+#             Start-Process wt.exe -Verb runAs -ArgumentList "-- powershell.exe -NoExit -Command `"$argList`""
+#         } else {
+#             # User is not admin, prompt for credentials
+#             $cred = Get-Credential -Message "Enter admin credentials"
+#             if ($cred) {
+#                 Start-Process wt.exe -Credential $cred -ArgumentList "-- powershell.exe -NoExit -Command `"$argList`""
+#             }
+#         }
+#     } else {
+#         if ($isInAdminGroup) {
+#             # User is admin, use UAC elevation
+#             Start-Process wt.exe -Verb runAs
+#         } else {
+#             # User is not admin, prompt for credentials
+#             $cred = Get-Credential -Message "Enter admin credentials"
+#             if ($cred) {
+#                 Start-Process wt.exe -Credential $cred
+#             }
+#         }
+#     }
+# }
 
 # Set UNIX-like aliases for the admin command, so sudo <command> will run the command with elevated rights.
-Set-Alias -Name su -Value admin
+# Set-Alias -Name su -Value admin
 
 # Lazy-load Terminal-Icons wrapper functions (aliases ls, gci, dir automatically use Get-ChildItem)
 function Get-ChildItem {
     if (-not $script:terminalIconsLoaded) {
         try {
             if (-not (Get-Module -ListAvailable -Name Terminal-Icons)) {
-                Install-Module -Name Terminal-Icons -Scope CurrentUser -Force -SkipPublisherCheck
+                # Try CurrentUser scope first, if that fails and we're admin, try AllUsers
+                try {
+                    Install-Module -Name Terminal-Icons -Scope CurrentUser -Force -SkipPublisherCheck -ErrorAction Stop
+                } catch {
+                    $isCurrentlyElevated = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+                    if ($isCurrentlyElevated) {
+                        Install-Module -Name Terminal-Icons -Scope AllUsers -Force -SkipPublisherCheck -ErrorAction Stop
+                    } else {
+                        throw
+                    }
+                }
             }
             Import-Module -Name Terminal-Icons -ErrorAction Stop
             $script:terminalIconsLoaded = $true
@@ -273,7 +291,17 @@ function Get-Item {
     if (-not $script:terminalIconsLoaded) {
         try {
             if (-not (Get-Module -ListAvailable -Name Terminal-Icons)) {
-                Install-Module -Name Terminal-Icons -Scope CurrentUser -Force -SkipPublisherCheck
+                # Try CurrentUser scope first, if that fails and we're admin, try AllUsers
+                try {
+                    Install-Module -Name Terminal-Icons -Scope CurrentUser -Force -SkipPublisherCheck -ErrorAction Stop
+                } catch {
+                    $isCurrentlyElevated = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+                    if ($isCurrentlyElevated) {
+                        Install-Module -Name Terminal-Icons -Scope AllUsers -Force -SkipPublisherCheck -ErrorAction Stop
+                    } else {
+                        throw
+                    }
+                }
             }
             Import-Module -Name Terminal-Icons -ErrorAction Stop
             $script:terminalIconsLoaded = $true
@@ -288,7 +316,17 @@ function Get-ItemProperty {
     if (-not $script:terminalIconsLoaded) {
         try {
             if (-not (Get-Module -ListAvailable -Name Terminal-Icons)) {
-                Install-Module -Name Terminal-Icons -Scope CurrentUser -Force -SkipPublisherCheck
+                # Try CurrentUser scope first, if that fails and we're admin, try AllUsers
+                try {
+                    Install-Module -Name Terminal-Icons -Scope CurrentUser -Force -SkipPublisherCheck -ErrorAction Stop
+                } catch {
+                    $isCurrentlyElevated = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+                    if ($isCurrentlyElevated) {
+                        Install-Module -Name Terminal-Icons -Scope AllUsers -Force -SkipPublisherCheck -ErrorAction Stop
+                    } else {
+                        throw
+                    }
+                }
             }
             Import-Module -Name Terminal-Icons -ErrorAction Stop
             $script:terminalIconsLoaded = $true
@@ -339,6 +377,14 @@ if (( Get-CimInstance -ClassName Win32_OperatingSystem ).ProductType -eq 1 ) {
                 Invoke-Expression (oh-my-posh init pwsh --config $ompConfigPath)
             } else {
                 Invoke-Expression (oh-my-posh init powershell --config $ompConfigPath)
+            }
+            
+            # Set window title after oh-my-posh to ensure it doesn't get overridden
+            $isCurrentlyElevated = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+            if ($isCurrentlyElevated) {
+                $host.ui.RawUI.WindowTitle = "Admin: PowerShell"
+            } else {
+                $host.ui.RawUI.WindowTitle = "User: PowerShell"
             }
         }        
 
