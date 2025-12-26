@@ -181,15 +181,39 @@ notepad .\Install-PowerShellSetup.ps1
 
 To remove the installation:
 
-1. Remove profile reference:
+1. Remove profile reference
    ```powershell
-   Remove-Item $PROFILE.CurrentUserAllHosts -Force
+   # Clear the profile files for the current user (wurtzmt-a)
+   Write-Host "Clearing profiles for: $env:USERNAME" -ForegroundColor Cyan
+   $profiles = @($PROFILE.AllUsersAllHosts, $PROFILE.AllUsersCurrentHost, $PROFILE.CurrentUserAllHosts, $PROFILE.CurrentUserCurrentHost)
+   foreach ($profilePath in $profiles) {
+      Write-Host "Checking: $profilePath" -ForegroundColor Yellow
+      if (Test-Path $profilePath) {
+         Set-Content -Path $profilePath -Value "" -Force
+         Write-Host "Cleared: $profilePath" -ForegroundColor Green
+      } else {
+         Write-Host "Not found: $profilePath" -ForegroundColor Gray
+      }
+   }
+
+   # Also clear any PowerShell 5.1 profiles
+   $ps51Profiles = @(
+      "$HOME\Documents\WindowsPowerShell\profile.ps1",
+      "$HOME\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1"
+   )
+   foreach ($profilePath in $ps51Profiles) {
+      Write-Host "Checking PS 5.1: $profilePath" -ForegroundColor Yellow
+      if (Test-Path $profilePath) {
+         Set-Content -Path $profilePath -Value "" -Force
+         Write-Host "Cleared: $profilePath" -ForegroundColor Green
+      }
+   }
    ```
 
 2. Remove directories:
    ```powershell
-   Remove-Item "$HOME\Documents\Coding\PowerShellProfile" -Recurse -Force
-   Remove-Item "$HOME\Documents\Coding\Powershell-Modules" -Recurse -Force
+   Remove-Item "$HOME\Documents\Coding\PowerShellProfile" -Recurse -Force -ErrorAction SilentlyContinue
+   Remove-Item "$HOME\Documents\Coding\Powershell-Modules" -Recurse -Force -ErrorAction SilentlyContinue
    ```
 
 3. Clean up PSModulePath:
@@ -198,4 +222,18 @@ To remove the installation:
    $newPath = ($currentPath -split ';' | Where-Object { $_ -notlike "*Powershell-Modules*" }) -join ';'
    [Environment]::SetEnvironmentVariable("PSModulePath", $newPath, "User")
    ```
+
+4. Reset Windows Terminal to default:
+   ```powershell
+   # Backup current settings (optional)
+   $settingsPath = "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
+   if (Test-Path $settingsPath) {
+      Copy-Item $settingsPath "$settingsPath.backup" -Force
+      Write-Host "Backed up settings to: $settingsPath.backup" -ForegroundColor Yellow
+      Remove-Item $settingsPath -Force
+      Write-Host "Removed Windows Terminal settings. Will regenerate defaults on next launch." -ForegroundColor Green
+   }
+   ```
+
+5. Restart PowerShell for changes to take effect
 
