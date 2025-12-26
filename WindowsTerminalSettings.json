@@ -42,7 +42,7 @@
                 "commandline": "%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
                 "font": 
                 {
-                    "face": "Cousine Nerd Font"
+                    "face": "JetBrainsMono Nerd Font"
                 },
                 "foreground": "#1BC622",
                 "guid": "{61c54bbd-c2c6-5271-96e7-009a87ff44bf}",
@@ -78,8 +78,7 @@
                 "elevate": true,
                 "font": 
                 {
-                    "face": "Cascadia Mono",
-                    "size": 12
+                    "face": "JetBrainsMono Nerd Font"
                 },
                 "guid": "{1ebef6e3-3504-4f57-bbe3-92313c358e8a}",
                 "hidden": false,
@@ -101,7 +100,7 @@
                 "cursorShape": "bar",
                 "font": 
                 {
-                    "face": "Cascadia Mono",
+                    "face": "JetBrainsMono Nerd Font",
                     "size": 12
                 },
                 "foreground": null,
