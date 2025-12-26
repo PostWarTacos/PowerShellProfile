@@ -69,7 +69,7 @@ if ($isAdmin) {
 # Define paths
 $documentsPath = [System.Environment]::GetFolderPath("MyDocuments")
 $codingPath = Join-Path $documentsPath "Coding"
-$profilePath = Join-Path $codingPath $ProfileRepo
+$profileRepoPath = Join-Path $codingPath $ProfileRepo
 $modulesPath = Join-Path $codingPath $ModulesRepo
 $profileFile = if ($isAdmin) { $PROFILE.AllUsersAllHosts } else { $PROFILE.CurrentUserAllHosts }
 
@@ -223,9 +223,9 @@ if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
 
 # Clone PowerShell Profile
 $profileRepoUrl = "https://github.com/$GitHubUser/$ProfileRepo.git"
-if (Test-Path $profilePath) {
+if (Test-Path $profileRepoPath) {
     Write-Host "  Updating PowerShell Profile..." -ForegroundColor Gray
-    Push-Location $profilePath
+    Push-Location $profileRepoPath
     try {
         git pull origin $Branch 2>&1 | Out-Null
         Write-Host "[+] Updated: $ProfileRepo" -ForegroundColor Green
@@ -236,9 +236,9 @@ if (Test-Path $profilePath) {
 } else {
     Write-Host "  Cloning PowerShell Profile..." -ForegroundColor Gray
     try {
-        git clone $profileRepoUrl $profilePath 2>&1 | Out-Null
+        git clone $profileRepoUrl $profileRepoPath 2>&1 | Out-Null
         if ($Branch -ne "main") {
-            Push-Location $profilePath
+            Push-Location $profileRepoPath
             git checkout $Branch 2>&1 | Out-Null
             Pop-Location
         }
@@ -296,10 +296,10 @@ if ($currentPSModulePath -notlike "*$modulesPath*") {
 Write-Host
 Write-Host "[*] Clearing existing profiles..." -ForegroundColor Cyan
 $profilesToClear = @($PROFILE.AllUsersAllHosts, $PROFILE.AllUsersCurrentHost, $PROFILE.CurrentUserAllHosts, $PROFILE.CurrentUserCurrentHost)
-foreach ($profilePath in $profilesToClear) {
-    if (Test-Path $profilePath) {
-        Set-Content -Path $profilePath -Value "" -Force
-        Write-Host "[+] Cleared: $profilePath" -ForegroundColor Green
+foreach ($profile in $profilesToClear) {
+    if (Test-Path $profile) {
+        Set-Content -Path $profile -Value "" -Force
+        Write-Host "[+] Cleared: $profile" -ForegroundColor Green
     }
 }
 
@@ -308,10 +308,10 @@ $ps51Profiles = @(
     "$HOME\Documents\WindowsPowerShell\profile.ps1",
     "$HOME\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1"
 )
-foreach ($profilePath in $ps51Profiles) {
-    if (Test-Path $profilePath) {
-        Set-Content -Path $profilePath -Value "" -Force
-        Write-Host "[+] Cleared PS 5.1: $profilePath" -ForegroundColor Green
+foreach ($profile in $ps51Profiles) {
+    if (Test-Path $profile) {
+        Set-Content -Path $profile -Value "" -Force
+        Write-Host "[+] Cleared PS 5.1: $profile" -ForegroundColor Green
     }
 }
 
@@ -328,7 +328,7 @@ $profileContent = @"
 # Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
 
 # Load the main PowerShell profile
-. "$profilePath\PowerShellProfile.ps1"
+. "$profileRepoPath\PowerShellProfile.ps1"
 "@
 
 try {
@@ -346,7 +346,7 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host
 
 Write-Host "Profile Location: " -ForegroundColor White -NoNewline
-Write-Host $profilePath -ForegroundColor Yellow
+Write-Host $profileRepoPath -ForegroundColor Yellow
 
 Write-Host "Modules Location: " -ForegroundColor White -NoNewline
 Write-Host $modulesPath -ForegroundColor Yellow
