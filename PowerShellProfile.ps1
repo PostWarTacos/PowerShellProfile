@@ -224,21 +224,28 @@ function admin {
     $adminSid = [Security.Principal.SecurityIdentifier]'S-1-5-32-544'
     $isInAdminGroup = $currentUser.Groups -contains $adminSid
     
-    if ($isInAdminGroup) {
-        # User account is in Administrators group, use UAC elevation
-        if ($args.Count -gt 0) {
-            $argList = $args -join ' '
-            Start-Process wt -Verb runAs -ArgumentList "pwsh.exe -NoExit -Command $argList"
+    if ($args.Count -gt 0) {
+        $argList = $args -join ' '
+        if ($isInAdminGroup) {
+            # User is admin, use UAC elevation with PowerShell console
+            Start-Process wt.exe -Verb runAs -ArgumentList "-- powershell.exe -NoExit -Command `"$argList`""
         } else {
-            Start-Process wt -Verb runAs
+            # User is not admin, prompt for credentials
+            $cred = Get-Credential -Message "Enter admin credentials"
+            if ($cred) {
+                Start-Process wt.exe -Credential $cred -ArgumentList "-- powershell.exe -NoExit -Command `"$argList`""
+            }
         }
     } else {
-        # User account is not in Administrators group, prompt for credentials
-        if ($args.Count -gt 0) {
-            $argList = $args -join ' '
-            Start-Process wt -Credential (Get-Credential) -ArgumentList "pwsh.exe -NoExit -Command $argList"
+        if ($isInAdminGroup) {
+            # User is admin, use UAC elevation
+            Start-Process wt.exe -Verb runAs
         } else {
-            Start-Process wt -Credential (Get-Credential)
+            # User is not admin, prompt for credentials
+            $cred = Get-Credential -Message "Enter admin credentials"
+            if ($cred) {
+                Start-Process wt.exe -Credential $cred
+            }
         }
     }
 }
@@ -502,7 +509,8 @@ Set-PSReadLineKeyHandler -Key RightArrow `
 #endregion
 
 $ErrorActionPreference = 'Continue'
-set-location $user
+$sessionHome = [System.Environment]::GetFolderPath("UserProfile")
+set-location $sessionHome
 
 #region Transcript
 
