@@ -9,7 +9,15 @@
 # Opt-out of PowerShell telemetry if running as admin
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if ($isAdmin) {
-    [System.Environment]::SetEnvironmentVariable('POWERSHELL_TELEMETRY_OPTOUT', 'true', [System.EnvironmentVariableTarget]::Machine)
+    try {
+        # Only set if not already configured to avoid unnecessary system calls
+        $currentValue = [System.Environment]::GetEnvironmentVariable('POWERSHELL_TELEMETRY_OPTOUT', [System.EnvironmentVariableTarget]::Machine)
+        if ($currentValue -ne 'true') {
+            [System.Environment]::SetEnvironmentVariable('POWERSHELL_TELEMETRY_OPTOUT', 'true', [System.EnvironmentVariableTarget]::Machine)
+        }
+    } catch {
+        # Silently continue if unable to set (e.g., during race conditions with Terminal settings)
+    }
 }
 
 #endregion
@@ -311,11 +319,44 @@ if (( Get-CimInstance -ClassName Win32_OperatingSystem ).ProductType -eq 1 ) {
             }
         }        
 
-        # Windows Terminal Settings
+        # Windows Terminal Settings - Check daily for updates using hash comparison
         if ($hasInternet) {
             $wtSettingsPath = "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
-            Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/WindowsTerminalSettings.json"`
-                -OutFile $wtSettingsPath
+            $lastWTCheckFile = "$env:TEMP\.lastwtcheck"
+            $shouldCheck = $true
+            
+            if (Test-Path $lastWTCheckFile) {
+                $lastTimestamp = Get-Content $lastWTCheckFile -ErrorAction SilentlyContinue
+                if ($lastTimestamp) {
+                    try {
+                        $lastCheck = [DateTime]::ParseExact($lastTimestamp, "yyyyMMddHHmmss", $null)
+                        $daysSinceLastCheck = ((Get-Date) - $lastCheck).TotalDays
+                        if ($daysSinceLastCheck -lt 1) {
+                            $shouldCheck = $false
+                        }
+                    } catch {
+                        # Invalid timestamp, allow check
+                    }
+                }
+            }
+            
+            if ($shouldCheck) {
+                try {
+                    $localHash = Get-FileHash $wtSettingsPath -ErrorAction Stop
+                    Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/WindowsTerminalSettings.json"`
+                        -OutFile "$env:TEMP\WindowsTerminalSettings.json" -ErrorAction Stop
+                    $remoteHash = Get-FileHash "$env:TEMP\WindowsTerminalSettings.json"
+                    
+                    if ($localHash.Hash -ne $remoteHash.Hash) {
+                        Copy-Item "$env:TEMP\WindowsTerminalSettings.json" -Destination $wtSettingsPath -Force
+                    }
+                    
+                    Remove-Item "$env:TEMP\WindowsTerminalSettings.json" -ErrorAction SilentlyContinue
+                    (Get-Date -Format "yyyyMMddHHmmss") | Out-File $lastWTCheckFile -Force
+                } catch {
+                    # Silently fail if file is locked or network error - will retry next time
+                }
+            }
         }
         
         # WinFetch - Only show once every 3 hours
