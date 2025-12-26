@@ -31,6 +31,12 @@
             "type": "path"
           },
           {
+            "foreground": "#ff0000",
+            "style": "plain",
+            "template": "{{ if .Root }}[ADMIN] {{ end }}",
+            "type": "session"
+          },
+          {
             "foreground": "#BFA8BF",
             "foreground_templates": [
               "{{ if gt .Code 0 }}#fff{{ end }}"
@@ -46,6 +52,5 @@
         "type": "prompt"
       }
     ],
-    "console_title_template": "{{ .Folder }}",
     "version": 3
   }
