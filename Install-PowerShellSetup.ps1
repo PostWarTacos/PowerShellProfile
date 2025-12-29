@@ -44,28 +44,64 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Check if running as administrator, if not, elevate
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+if (-not $isAdmin) {
+    Write-Host "This script requires administrator privileges. Attempting to elevate..." -ForegroundColor Yellow
+    
+    # Build arguments to pass to elevated process
+    $scriptPath = $MyInvocation.MyCommand.Path
+    $arguments = @(
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", "`"$scriptPath`""
+    )
+    
+    # Add script parameters to arguments
+    if ($PSBoundParameters.ContainsKey('GitHubUser')) {
+        $arguments += "-GitHubUser", "`"$GitHubUser`""
+    }
+    if ($PSBoundParameters.ContainsKey('ProfileRepo')) {
+        $arguments += "-ProfileRepo", "`"$ProfileRepo`""
+    }
+    if ($PSBoundParameters.ContainsKey('ModulesRepo')) {
+        $arguments += "-ModulesRepo", "`"$ModulesRepo`""
+    }
+    if ($PSBoundParameters.ContainsKey('Branch')) {
+        $arguments += "-Branch", "`"$Branch`""
+    }
+    
+    # Determine which PowerShell to use
+    $powershellCmd = if ($PSVersionTable.PSVersion.Major -ge 6) { "pwsh" } else { "powershell" }
+    
+    # Start elevated process
+    try {
+        Start-Process $powershellCmd -ArgumentList $arguments -Verb RunAs -Wait
+        exit
+    }
+    catch {
+        Write-Host "Failed to elevate. Error: $_" -ForegroundColor Red
+        Write-Host "Please run this script as administrator manually." -ForegroundColor Yellow
+        exit 1
+    }
+}
+
 Clear-Host
 Write-Host
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host " PowerShell Environment Setup" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host
-
-# Check for admin rights
-$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-if ($isAdmin) {
-    Write-Host "[+] Running with administrator privileges" -ForegroundColor Green
-} else {
-    Write-Host "[!] Not running as administrator. Installing to All Users requires elevation." -ForegroundColor Yellow
-    Write-Host "    Profile will be installed for current user only." -ForegroundColor Yellow
-}
+Write-Host "[+] Running with administrator privileges" -ForegroundColor Green
+Write-Host
 
 # Define paths
 $documentsPath = [System.Environment]::GetFolderPath("MyDocuments")
 $codingPath = Join-Path $documentsPath "Coding"
 $profileRepoPath = Join-Path $codingPath $ProfileRepo
 $modulesPath = Join-Path $codingPath $ModulesRepo
-$profileFile = if ($isAdmin) { $PROFILE.AllUsersAllHosts } else { $PROFILE.CurrentUserAllHosts }
+$profileFile = $PROFILE.AllUsersAllHosts
 
 # Verify GitHub connectivity
 Write-Host

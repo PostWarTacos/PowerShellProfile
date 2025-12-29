@@ -29,6 +29,40 @@ param(
     [switch]$SkipTerminalReset
 )
 
+# Check if running as administrator, if not, elevate
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+if (-not $isAdmin) {
+    Write-Host "This script requires administrator privileges. Attempting to elevate..." -ForegroundColor Yellow
+    
+    # Build arguments to pass to elevated process
+    $scriptPath = $MyInvocation.MyCommand.Path
+    $arguments = @(
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", "`"$scriptPath`""
+    )
+    
+    # Add script parameters to arguments
+    if ($PSBoundParameters.ContainsKey('SkipTerminalReset')) {
+        $arguments += "-SkipTerminalReset"
+    }
+    
+    # Determine which PowerShell to use
+    $powershellCmd = if ($PSVersionTable.PSVersion.Major -ge 6) { "pwsh" } else { "powershell" }
+    
+    # Start elevated process
+    try {
+        Start-Process $powershellCmd -ArgumentList $arguments -Verb RunAs -Wait
+        exit
+    }
+    catch {
+        Write-Host "Failed to elevate. Error: $_" -ForegroundColor Red
+        Write-Host "Please run this script as administrator manually." -ForegroundColor Yellow
+        exit 1
+    }
+}
+
 Write-Host
 Write-Host "=== PowerShell Profile Uninstallation ===" -ForegroundColor Cyan
 Write-Host "This will remove your PowerShell profile setup." -ForegroundColor Yellow
