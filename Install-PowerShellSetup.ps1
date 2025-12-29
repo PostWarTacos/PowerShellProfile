@@ -39,7 +39,10 @@ param(
     [string]$ModulesRepo = "Powershell-Modules",
     
     [Parameter()]
-    [string]$Branch = "main"
+    [string]$Branch = "main",
+    
+    [Parameter()]
+    [string]$TempScriptPath = ""
 )
 
 $ErrorActionPreference = 'Stop'
@@ -52,10 +55,12 @@ if (-not $isAdmin) {
     
     # Build arguments to pass to elevated process
     $scriptPath = $MyInvocation.MyCommand.Path
+    $createdTempScript = $false
     
     # If script path is empty (running from iex), save script to temp file first
     if ([string]::IsNullOrEmpty($scriptPath)) {
         $scriptPath = Join-Path $env:TEMP "Install-PowerShellSetup-$(Get-Date -Format 'yyyyMMdd-HHmmss').ps1"
+        $createdTempScript = $true
         
         # Get the script content from the current invocation
         $scriptContent = $MyInvocation.MyCommand.ScriptBlock.ToString()
@@ -76,6 +81,11 @@ if (-not $isAdmin) {
         "-ExecutionPolicy", "Bypass",
         "-File", "`"$scriptPath`""
     )
+    
+    # Add parameter to track temp script cleanup
+    if ($createdTempScript) {
+        $arguments += "-TempScriptPath", "`"$scriptPath`""
+    }
     
     # Add script parameters to arguments
     if ($PSBoundParameters.ContainsKey('GitHubUser')) {
@@ -440,6 +450,17 @@ if (-not (Get-Command oh-my-posh -ErrorAction SilentlyContinue)) {
 }
 
 Write-Host
-Write-Host "To update in the future, run this script again!" -ForegroundColor CyanWrite-Host
+Write-Host "To update in the future, run this script again!" -ForegroundColor Cyan
+Write-Host
+
+# Clean up temp script if it was created
+if (-not [string]::IsNullOrEmpty($TempScriptPath) -and (Test-Path $TempScriptPath)) {
+    try {
+        Remove-Item -Path $TempScriptPath -Force -ErrorAction SilentlyContinue
+    }
+    catch {
+        # Silently ignore cleanup errors
+    }
+}
 
 Read-Host "Press Enter to exit"
