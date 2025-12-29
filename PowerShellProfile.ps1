@@ -224,43 +224,6 @@ function Update-Profile {
     }
 }
 
-# System Utilities
-# DISABLED - function not elevating properly
-# function admin {
-#     # Check if current user account is a member of the local Administrators group
-#     $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
-#     $adminSid = [Security.Principal.SecurityIdentifier]'S-1-5-32-544'
-#     $isInAdminGroup = $currentUser.Groups -contains $adminSid
-#     
-#     if ($args.Count -gt 0) {
-#         $argList = $args -join ' '
-#         if ($isInAdminGroup) {
-#             # User is admin, use UAC elevation with PowerShell console
-#             Start-Process wt.exe -Verb runAs -ArgumentList "-- powershell.exe -NoExit -Command `"$argList`""
-#         } else {
-#             # User is not admin, prompt for credentials
-#             $cred = Get-Credential -Message "Enter admin credentials"
-#             if ($cred) {
-#                 Start-Process wt.exe -Credential $cred -ArgumentList "-- powershell.exe -NoExit -Command `"$argList`""
-#             }
-#         }
-#     } else {
-#         if ($isInAdminGroup) {
-#             # User is admin, use UAC elevation
-#             Start-Process wt.exe -Verb runAs
-#         } else {
-#             # User is not admin, prompt for credentials
-#             $cred = Get-Credential -Message "Enter admin credentials"
-#             if ($cred) {
-#                 Start-Process wt.exe -Credential $cred
-#             }
-#         }
-#     }
-# }
-
-# Set UNIX-like aliases for the admin command, so sudo <command> will run the command with elevated rights.
-# Set-Alias -Name su -Value admin
-
 # Lazy-load Terminal-Icons wrapper functions (aliases ls, gci, dir automatically use Get-ChildItem)
 function Get-ChildItem {
     if (-not $script:terminalIconsLoaded) {
