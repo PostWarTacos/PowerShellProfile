@@ -42,7 +42,7 @@ param(
     [string]$Branch = "main"
 )
 
-$ErrorActionPreference = 'Stop'
+#$ErrorActionPreference = 'Stop'
 
 # Check if running as administrator, if not, elevate
 Write-Host "DEBUG: Checking if running as administrator..." -ForegroundColor Magenta
