@@ -42,53 +42,31 @@ param(
     [string]$Branch = "main"
 )
 
-#$ErrorActionPreference = 'Stop'
-
-# Debug output at the very start
-Write-Host "========================================" -ForegroundColor Magenta
-Write-Host "DEBUG: Script execution started" -ForegroundColor Magenta
-Write-Host "DEBUG: PowerShell Version: $($PSVersionTable.PSVersion)" -ForegroundColor Magenta
-Write-Host "DEBUG: Parameters received:" -ForegroundColor Magenta
-Write-Host "  GitHubUser: $GitHubUser" -ForegroundColor Magenta
-Write-Host "  ProfileRepo: $ProfileRepo" -ForegroundColor Magenta
-Write-Host "  ModulesRepo: $ModulesRepo" -ForegroundColor Magenta
-Write-Host "  Branch: $Branch" -ForegroundColor Magenta
-Write-Host "========================================" -ForegroundColor Magenta
-Write-Host
+$ErrorActionPreference = 'Stop'
 
 # Check if running as administrator, if not, elevate
-Write-Host "DEBUG: Checking if running as administrator..." -ForegroundColor Magenta
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-Write-Host "DEBUG: Is Admin = $isAdmin" -ForegroundColor Magenta
 
 if (-not $isAdmin) {
     Write-Host "This script requires administrator privileges. Attempting to elevate..." -ForegroundColor Yellow
-    Write-Host "DEBUG: Not running as admin, will attempt elevation" -ForegroundColor Magenta
     
     # Build arguments to pass to elevated process
     $scriptPath = $MyInvocation.MyCommand.Path
-    Write-Host "DEBUG: Script Path = $scriptPath" -ForegroundColor Magenta
-    Write-Host "DEBUG: Script Path is null or empty = $([string]::IsNullOrEmpty($scriptPath))" -ForegroundColor Magenta
     
     # If script path is empty (running from iex), save script to temp file first
     if ([string]::IsNullOrEmpty($scriptPath)) {
-        Write-Host "DEBUG: Script is running from pipeline (iex), saving to temp file..." -ForegroundColor Magenta
         $scriptPath = Join-Path $env:TEMP "Install-PowerShellSetup-$(Get-Date -Format 'yyyyMMdd-HHmmss').ps1"
-        Write-Host "DEBUG: Temp script path = $scriptPath" -ForegroundColor Magenta
         
         # Get the script content from the current invocation
         $scriptContent = $MyInvocation.MyCommand.ScriptBlock.ToString()
-        Write-Host "DEBUG: Script content length = $($scriptContent.Length) characters" -ForegroundColor Magenta
         
         # Save to temp file
         try {
             $scriptContent | Out-File -FilePath $scriptPath -Encoding UTF8 -Force
-            Write-Host "DEBUG: Script saved to temp file successfully" -ForegroundColor Magenta
         }
         catch {
-            Write-Host "DEBUG: Failed to save script to temp file: $_" -ForegroundColor Red
             Write-Host "ERROR: Cannot elevate - script is running from pipeline and cannot be saved" -ForegroundColor Red
-            Read-Host "Press Enter to exit"
+            Write-Host "Error: $_" -ForegroundColor Red
             exit 1
         }
     }
@@ -99,57 +77,34 @@ if (-not $isAdmin) {
         "-File", "`"$scriptPath`""
     )
     
-    Write-Host "DEBUG: Base arguments created" -ForegroundColor Magenta
-    
     # Add script parameters to arguments
     if ($PSBoundParameters.ContainsKey('GitHubUser')) {
-        Write-Host "DEBUG: Adding GitHubUser parameter: $GitHubUser" -ForegroundColor Magenta
         $arguments += "-GitHubUser", "`"$GitHubUser`""
     }
     if ($PSBoundParameters.ContainsKey('ProfileRepo')) {
-        Write-Host "DEBUG: Adding ProfileRepo parameter: $ProfileRepo" -ForegroundColor Magenta
         $arguments += "-ProfileRepo", "`"$ProfileRepo`""
     }
     if ($PSBoundParameters.ContainsKey('ModulesRepo')) {
-        Write-Host "DEBUG: Adding ModulesRepo parameter: $ModulesRepo" -ForegroundColor Magenta
         $arguments += "-ModulesRepo", "`"$ModulesRepo`""
     }
     if ($PSBoundParameters.ContainsKey('Branch')) {
-        Write-Host "DEBUG: Adding Branch parameter: $Branch" -ForegroundColor Magenta
         $arguments += "-Branch", "`"$Branch`""
     }
     
-    Write-Host "DEBUG: All arguments: $($arguments -join ' ')" -ForegroundColor Magenta
-    
     # Determine which PowerShell to use
     $powershellCmd = if ($PSVersionTable.PSVersion.Major -ge 6) { "pwsh" } else { "powershell" }
-    Write-Host "DEBUG: PowerShell command to use: $powershellCmd" -ForegroundColor Magenta
-    Write-Host "DEBUG: PowerShell version: $($PSVersionTable.PSVersion)" -ForegroundColor Magenta
-    
-    Write-Host "DEBUG: About to start elevated process..." -ForegroundColor Magenta
-    Read-Host "Press Enter to attempt elevation"
     
     # Start elevated process
     try {
-        Write-Host "DEBUG: Calling Start-Process..." -ForegroundColor Magenta
         Start-Process $powershellCmd -ArgumentList $arguments -Verb RunAs -Wait
-        Write-Host "DEBUG: Start-Process completed, exiting non-elevated instance" -ForegroundColor Magenta
-        Read-Host "Press Enter to exit non-elevated instance"
         exit
     }
     catch {
         Write-Host "Failed to elevate. Error: $_" -ForegroundColor Red
-        Write-Host "DEBUG: Exception Type: $($_.Exception.GetType().FullName)" -ForegroundColor Magenta
-        Write-Host "DEBUG: Exception Message: $($_.Exception.Message)" -ForegroundColor Magenta
-        Write-Host "DEBUG: Stack Trace: $($_.ScriptStackTrace)" -ForegroundColor Magenta
         Write-Host "Please run this script as administrator manually." -ForegroundColor Yellow
-        Read-Host "Press Enter to exit"
         exit 1
     }
 }
-
-Write-Host "DEBUG: Running as administrator, continuing with installation..." -ForegroundColor Magenta
-Read-Host "Press Enter to continue"
 
 Clear-Host
 Write-Host
@@ -485,4 +440,6 @@ if (-not (Get-Command oh-my-posh -ErrorAction SilentlyContinue)) {
 }
 
 Write-Host
-Write-Host "To update in the future, run this script again!" -ForegroundColor Cyan
+Write-Host "To update in the future, run this script again!" -ForegroundColor CyanWrite-Host
+
+Read-Host "Press Enter to exit"
