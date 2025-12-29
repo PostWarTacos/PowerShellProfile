@@ -44,6 +44,18 @@ param(
 
 #$ErrorActionPreference = 'Stop'
 
+# Debug output at the very start
+Write-Host "========================================" -ForegroundColor Magenta
+Write-Host "DEBUG: Script execution started" -ForegroundColor Magenta
+Write-Host "DEBUG: PowerShell Version: $($PSVersionTable.PSVersion)" -ForegroundColor Magenta
+Write-Host "DEBUG: Parameters received:" -ForegroundColor Magenta
+Write-Host "  GitHubUser: $GitHubUser" -ForegroundColor Magenta
+Write-Host "  ProfileRepo: $ProfileRepo" -ForegroundColor Magenta
+Write-Host "  ModulesRepo: $ModulesRepo" -ForegroundColor Magenta
+Write-Host "  Branch: $Branch" -ForegroundColor Magenta
+Write-Host "========================================" -ForegroundColor Magenta
+Write-Host
+
 # Check if running as administrator, if not, elevate
 Write-Host "DEBUG: Checking if running as administrator..." -ForegroundColor Magenta
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -57,6 +69,29 @@ if (-not $isAdmin) {
     $scriptPath = $MyInvocation.MyCommand.Path
     Write-Host "DEBUG: Script Path = $scriptPath" -ForegroundColor Magenta
     Write-Host "DEBUG: Script Path is null or empty = $([string]::IsNullOrEmpty($scriptPath))" -ForegroundColor Magenta
+    
+    # If script path is empty (running from iex), save script to temp file first
+    if ([string]::IsNullOrEmpty($scriptPath)) {
+        Write-Host "DEBUG: Script is running from pipeline (iex), saving to temp file..." -ForegroundColor Magenta
+        $scriptPath = Join-Path $env:TEMP "Install-PowerShellSetup-$(Get-Date -Format 'yyyyMMdd-HHmmss').ps1"
+        Write-Host "DEBUG: Temp script path = $scriptPath" -ForegroundColor Magenta
+        
+        # Get the script content from the current invocation
+        $scriptContent = $MyInvocation.MyCommand.ScriptBlock.ToString()
+        Write-Host "DEBUG: Script content length = $($scriptContent.Length) characters" -ForegroundColor Magenta
+        
+        # Save to temp file
+        try {
+            $scriptContent | Out-File -FilePath $scriptPath -Encoding UTF8 -Force
+            Write-Host "DEBUG: Script saved to temp file successfully" -ForegroundColor Magenta
+        }
+        catch {
+            Write-Host "DEBUG: Failed to save script to temp file: $_" -ForegroundColor Red
+            Write-Host "ERROR: Cannot elevate - script is running from pipeline and cannot be saved" -ForegroundColor Red
+            Read-Host "Press Enter to exit"
+            exit 1
+        }
+    }
     
     $arguments = @(
         "-NoProfile",
