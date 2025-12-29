@@ -13,9 +13,6 @@
 .PARAMETER GitHubUser
     GitHub username where the repositories are hosted.
 
-.PARAMETER SkipPrerequisites
-    Skip installation of prerequisites if they're already installed.
-
 .PARAMETER ProfileRepo
     Name of the PowerShellProfile repository (default: PowerShellProfile)
 
@@ -34,9 +31,6 @@
 param(
     [Parameter()]
     [string]$GitHubUser = "PostWarTacos",
-    
-    [Parameter()]
-    [switch]$SkipPrerequisites,
     
     [Parameter()]
     [string]$ProfileRepo = "PowerShellProfile",
@@ -73,6 +67,34 @@ $profileRepoPath = Join-Path $codingPath $ProfileRepo
 $modulesPath = Join-Path $codingPath $ModulesRepo
 $profileFile = if ($isAdmin) { $PROFILE.AllUsersAllHosts } else { $PROFILE.CurrentUserAllHosts }
 
+# Verify GitHub connectivity
+Write-Host
+Write-Host "[*] Verifying GitHub connectivity..." -ForegroundColor Cyan
+try {
+    $testConnection = Test-Connection -ComputerName github.com -Count 2 -Quiet -ErrorAction Stop
+    if ($testConnection) {
+        Write-Host "[+] GitHub is accessible" -ForegroundColor Green
+    } else {
+        Write-Host "[!] Cannot reach github.com" -ForegroundColor Red
+        Write-Host "    Please check your internet connection and try again." -ForegroundColor Yellow
+        exit 1
+    }
+} catch {
+    Write-Host "[!] Network connectivity test failed: $_" -ForegroundColor Red
+    Write-Host "    Please check your internet connection and firewall settings." -ForegroundColor Yellow
+    exit 1
+}
+
+# Verify git availability
+Write-Host
+Write-Host "[*] Checking for git..." -ForegroundColor Cyan
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    Write-Host "[!] Git is not installed. It will be installed with prerequisites." -ForegroundColor Yellow
+} else {
+    $gitVersion = (git --version) -replace 'git version ', ''
+    Write-Host "[+] Git is installed: $gitVersion" -ForegroundColor Green
+}
+
 # Create directories
 Write-Host
 Write-Host "[*] Creating directory structure..." -ForegroundColor Cyan
@@ -84,9 +106,8 @@ if (-not (Test-Path $codingPath)) {
 }
 
 # Install prerequisites
-if (-not $SkipPrerequisites) {
-    Write-Host
-    Write-Host "[*] Installing prerequisites..." -ForegroundColor Cyan
+Write-Host
+Write-Host "[*] Installing prerequisites..." -ForegroundColor Cyan
     
     # Install winget
     Write-Host "  Checking winget..." -ForegroundColor Gray
@@ -209,9 +230,6 @@ if (-not $SkipPrerequisites) {
     } else {
         Write-Host "[+] winfetch already installed" -ForegroundColor Green
     }
-} else {
-    Write-Host "[*] Skipping prerequisites installation..." -ForegroundColor Cyan
-}
 
 # Clone repositories
 Write-Host
