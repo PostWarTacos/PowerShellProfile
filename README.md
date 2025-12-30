@@ -1,6 +1,8 @@
-# PowerShell Environment Installation
+# PowerShell Profile Setup
 
 Quick installation script for setting up a complete PowerShell environment with custom profile, modules, and prerequisites.
+
+> **Note:** This repository contains the PowerShell profile configuration. Custom PowerShell modules are maintained in a separate repository: [Powershell-Modules](https://github.com/PostWarTacos/Powershell-Modules)
 
 ## Quick Install
 
@@ -21,14 +23,14 @@ irm https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/main/Instal
 - **winfetch** - System information tool
 
 ### Repositories
-The script clones two repositories into `~\Documents\Coding\`:
-- **PowerShellProfile** - Profile scripts, Oh My Posh theme, and configurations
-- **Powershell-Modules** - Custom PowerShell modules
+The script clones two separate repositories into `~\Documents\Coding\`:
+- **PowerShellProfile** - Profile scripts, Oh My Posh theme, and configurations (this repository)
+- **[Powershell-Modules](https://github.com/PostWarTacos/Powershell-Modules)** - Custom PowerShell modules (separate repository)
 
 ## Installation Locations
 
-- **Profile Files:** `~\Documents\Coding\PowerShellProfile\`
-- **Modules:** `~\Documents\Coding\Powershell-Modules\`
+- **Profile Files:** `~\Documents\Coding\PowerShellProfile\` (this repository)
+- **Modules:** `~\Documents\Coding\Powershell-Modules\` (separate repository)
 - **PowerShell Profile:** `$PROFILE.CurrentUserAllHosts`
 
 ## Parameters
@@ -165,6 +167,10 @@ Import-Module "$HOME\Documents\Coding\Powershell-Modules\ModuleName"
 - **Internet connection** for downloading files and prerequisites
 - **Administrator rights** (optional, but recommended for full feature set)
 
+## Author
+
+Created by **PostWarTacos**
+
 ## Security Note
 
 Always review scripts before running them with `irm | iex`. You can download and inspect the script first:
@@ -176,6 +182,10 @@ notepad .\Install-PowerShellSetup.ps1
 # Then run it
 .\Install-PowerShellSetup.ps1
 ```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Uninstallation
 
