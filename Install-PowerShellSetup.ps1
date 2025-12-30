@@ -23,7 +23,7 @@
     irm https://raw.githubusercontent.com/USERNAME/PowerShellProfile/main/Install-PowerShellSetup.ps1 | iex
 
 .NOTES
-    Author: Generated for wurtz
+    Author: PostWarTacos
     Date: 2025-12-24
 #>
 
