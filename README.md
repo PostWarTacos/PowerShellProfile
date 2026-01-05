@@ -29,8 +29,8 @@ The script clones two separate repositories into `~\Documents\Coding\`:
 
 ## Installation Locations
 
-- **Profile Files:** `~\Documents\Coding\PowerShellProfile\` (this repository)
-- **Modules:** `~\Documents\Coding\Powershell-Modules\` (separate repository)
+- **Profile Files:** `~\Documents\Coding\WorkspaceMeta\PowerShellProfile\` (this repository)
+- **Modules:** `~\Documents\Coding\WorkspaceMeta\Powershell-Modules\` (separate repository)
 - **PowerShell Profile:** `$PROFILE.CurrentUserAllHosts`
 
 ## Parameters
@@ -114,19 +114,19 @@ If you prefer to install manually:
    
    **Current User (recommended):**
    ```powershell
-   $content = '. "' + (Join-Path $HOME 'Documents\Coding\PowerShellProfile\PowerShellProfile.ps1') + '"'
+   $content = '. "' + (Join-Path $HOME 'Documents\Coding\WorkspaceMeta\PowerShellProfile\PowerShellProfile.ps1') + '"'
    Set-Content $PROFILE.CurrentUserAllHosts -Value $content -Force
    ```
    
    **All Users (requires Administrator):**
    ```powershell
-   $content = '. "' + (Join-Path $HOME 'Documents\Coding\PowerShellProfile\PowerShellProfile.ps1') + '"'
+   $content = '. "' + (Join-Path $HOME 'Documents\Coding\WorkspaceMeta\PowerShellProfile\PowerShellProfile.ps1') + '"'
    Set-Content $PROFILE.AllUsersAllHosts -Value $content -Force
    ```
 
 4. Add modules to path:
    ```powershell
-   $modulePath = Join-Path $HOME 'Documents\Coding\Powershell-Modules'
+   $modulePath = Join-Path $HOME 'Documents\Coding\WorkspaceMeta\Powershell-Modules'
    $currentPath = [Environment]::GetEnvironmentVariable("PSModulePath", "User")
    [Environment]::SetEnvironmentVariable("PSModulePath", "$modulePath;$currentPath", "User")
    ```
@@ -154,10 +154,10 @@ If custom modules aren't loading:
 $env:PSModulePath -split ';'
 
 # Manually add the path for current session
-$env:PSModulePath += ";$HOME\Documents\Coding\Powershell-Modules"
+$env:PSModulePath += ";$HOME\Documents\Coding\WorkspaceMeta\Powershell-Modules"
 
 # Import a module manually
-Import-Module "$HOME\Documents\Coding\Powershell-Modules\ModuleName"
+Import-Module "$HOME\Documents\Coding\WorkspaceMeta\Powershell-Modules\ModuleName"
 ```
 
 ## Requirements
@@ -222,8 +222,8 @@ To remove the installation:
 
 2. Remove directories:
    ```powershell
-   Remove-Item "$HOME\Documents\Coding\PowerShellProfile" -Recurse -Force -ErrorAction SilentlyContinue
-   Remove-Item "$HOME\Documents\Coding\Powershell-Modules" -Recurse -Force -ErrorAction SilentlyContinue
+   Remove-Item "$HOME\Documents\Coding\WorkspaceMeta\PowerShellProfile" -Recurse -Force -ErrorAction SilentlyContinue
+   Remove-Item "$HOME\Documents\Coding\WorkspaceMeta\Powershell-Modules" -Recurse -Force -ErrorAction SilentlyContinue
    ```
 
 3. Clean up PSModulePath:

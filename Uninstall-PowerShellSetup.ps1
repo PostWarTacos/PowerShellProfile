@@ -108,8 +108,8 @@ foreach ($profilePath in $ps51Profiles) {
 Write-Host
 Write-Host "[2/4] Removing directories..." -ForegroundColor Cyan
 
-$profileDir = "$HOME\Documents\Coding\PowerShellProfile"
-$modulesDir = "$HOME\Documents\Coding\Powershell-Modules"
+$profileDir = "$HOME\Documents\Coding\WorkspaceMeta\PowerShellProfile"
+$modulesDir = "$HOME\Documents\Coding\WorkspaceMeta\Powershell-Modules"
 
 if (Test-Path $profileDir) {
     Remove-Item $profileDir -Recurse -Force -ErrorAction SilentlyContinue

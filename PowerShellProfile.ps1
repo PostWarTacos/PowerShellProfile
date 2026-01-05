@@ -1,8 +1,8 @@
 ﻿# All Users All Hosts PowerShell Profile
-# Set-Content -Path "C:\Windows\System32\WindowsPowerShell\v1.0\profile.ps1" -Value '. "C:\Users\wurtzmt\Documents\Coding\PowerShellProfile\PowerShellProfile.ps1"' -Force
+# Set-Content -Path "C:\Windows\System32\WindowsPowerShell\v1.0\profile.ps1" -Value '. "C:\Users\wurtzmt\Documents\Coding\WorkspaceMeta\PowerShellProfile\PowerShellProfile.ps1"' -Force
 
 # Current User All Hosts PowerShell Profile
-# Set-Content $PROFILE -Value '. "C:\Users\wurtzmt\Documents\Coding\PowerShellProfile\PowerShellProfile.ps1"' -force
+# Set-Content $PROFILE -Value '. "C:\Users\wurtzmt\Documents\Coding\WorkspaceMeta\PowerShellProfile\PowerShellProfile.ps1"' -force
 
 #region Telemetry Opt-Out
 
@@ -144,7 +144,7 @@ Start-Job -ScriptBlock ${function:Sync-Winfetch} -ArgumentList $hasInternet | Ou
 #region PowerShell Modules Auto Git Sync
 
 $repoURL = "https://github.com/PostWarTacos/Powershell-Modules.git"
-$moduleClonePath = "$user\Documents\Coding\Powershell-Modules"
+$moduleClonePath = "$user\Documents\Coding\WorkspaceMeta\Powershell-Modules"
 
 function Sync-GitModules {
     param($moduleClonePath, $repoURL, $hasInternet)
@@ -203,7 +203,7 @@ Start-Job -ScriptBlock ${function:Sync-GitModules} -ArgumentList $moduleClonePat
 function Update-Profile {
     try {
         $profileUrl = "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/PowerShellProfile.ps1"
-        $currentProfilePath = "$user\Documents\Coding\PowerShellProfile\PowerShellProfile.ps1"
+        $currentProfilePath = "$user\Documents\Coding\WorkspaceMeta\PowerShellProfile\PowerShellProfile.ps1"
         
         Write-Host "Checking for profile updates..." -ForegroundColor Cyan
         
@@ -331,7 +331,7 @@ if (( Get-CimInstance -ClassName Win32_OperatingSystem ).ProductType -eq 1 ) {
 
         # oh-my-posh
         If ( Get-Command oh-my-posh -ErrorAction SilentlyContinue ){
-            $ompConfigPath = "$user\Documents\Coding\PowerShellProfile\OhMyPoshTheme.json"
+            $ompConfigPath = "$user\Documents\Coding\WorkspaceMeta\PowerShellProfile\OhMyPoshTheme.json"
             if ( -not ( Test-Path $ompConfigPath ) -and $hasInternet) {
                 Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/OhMyPoshTheme.json"`
                     -OutFile $ompConfigPath

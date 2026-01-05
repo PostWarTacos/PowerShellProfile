@@ -127,7 +127,7 @@ Write-Host
 
 # Define paths
 $documentsPath = [System.Environment]::GetFolderPath("MyDocuments")
-$codingPath = Join-Path $documentsPath "Coding"
+$codingPath = Join-Path $documentsPath "Coding\WorkspaceMeta"
 $profileRepoPath = Join-Path $codingPath $ProfileRepo
 $modulesPath = Join-Path $codingPath $ModulesRepo
 $profileFile = $PROFILE.AllUsersAllHosts
