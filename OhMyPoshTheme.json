@@ -33,7 +33,7 @@
           {
             "foreground": "#ff0000",
             "style": "plain",
-            "template": "{{ if or .Root (regexMatch \".*-a.*\" .UserName) }}[ADMIN]{{ end }}",
+            "template": "{{ if or .Root (regexMatch \".*-a.*\" .UserName) }} [ADMIN]{{ end }}",
             "type": "session"
           },
           {
