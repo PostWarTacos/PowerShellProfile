@@ -225,6 +225,9 @@ function Update-Profile {
 }
 
 # Lazy-load Terminal-Icons wrapper functions (aliases ls, gci, dir automatically use Get-ChildItem)
+# Set alias for grep to findstr for Windows users
+Set-Alias grep findstr
+
 function Get-ChildItem {
     if (-not $script:terminalIconsLoaded) {
         try {
