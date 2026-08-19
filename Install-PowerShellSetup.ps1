@@ -42,6 +42,12 @@ param(
     [string]$Branch = "main",
     
     [Parameter()]
+    [string]$GitUserName = "PostWarTacos",
+    
+    [Parameter()]
+    [string]$GitUserEmail = "postwartacos@gmail.com",
+    
+    [Parameter()]
     [string]$TempScriptPath = ""
 )
 
@@ -99,6 +105,12 @@ if (-not $isAdmin) {
     }
     if ($PSBoundParameters.ContainsKey('Branch')) {
         $arguments += "-Branch", "`"$Branch`""
+    }
+    if ($PSBoundParameters.ContainsKey('GitUserName')) {
+        $arguments += "-GitUserName", "`"$GitUserName`""
+    }
+    if ($PSBoundParameters.ContainsKey('GitUserEmail')) {
+        $arguments += "-GitUserEmail", "`"$GitUserEmail`""
     }
     
     # Determine which PowerShell to use
@@ -365,6 +377,21 @@ Write-Host "[*] Installing prerequisites..." -ForegroundColor Cyan
     } finally {
         Remove-Item $tempSysinternalsZip -ErrorAction SilentlyContinue
     }
+
+# Configure git identity
+Write-Host
+Write-Host "[*] Configuring git identity..." -ForegroundColor Cyan
+if (Get-Command git -ErrorAction SilentlyContinue) {
+    try {
+        git config --global user.name "$GitUserName"
+        git config --global user.email "$GitUserEmail"
+        Write-Host "[+] Set git user.name to '$GitUserName' and user.email to '$GitUserEmail'" -ForegroundColor Green
+    } catch {
+        Write-Host "[!] Could not configure git identity: $_" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "[!] Git not available yet, skipping identity configuration" -ForegroundColor Yellow
+}
 
 # Clone repositories
 Write-Host
