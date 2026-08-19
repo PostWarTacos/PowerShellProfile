@@ -28,12 +28,14 @@ pwsh -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercont
 - **git** - Version control system
 - **PSReadLine** - Enhanced command-line editing
 - **Terminal-Icons** - File and folder icons in the terminal
-- **Oh My Posh** - Theme engine for PowerShell prompt
+- **Oh My Posh** - Theme engine for PowerShell prompt (skipped in the VS Code integrated terminal)
 - **JetBrains Mono Nerd Font** - Font with icon support
 - **winfetch** - System information tool
+- **Sysinternals Suite** - Downloaded, extracted to `%SystemRoot%\System32\SysinternalsSuite`, added to the system `PATH`, and given a desktop shortcut. Re-running the installer only re-extracts it if the downloaded zip's hash has changed.
 
 ### Configuration Changes
 - Sets PowerShell execution policy to **Bypass** at **CurrentUser** scope
+- Sets global git identity (`git config --global user.name`/`user.email`)
 
 ### Repositories
 The script clones two separate repositories into `~\Documents\Coding\`:
@@ -51,27 +53,30 @@ The script clones two separate repositories into `~\Documents\Coding\`:
 The installation script supports several parameters:
 
 ```powershell
-Install-PowerShellSetup.ps1 [-GitHubUser <string>] [-SkipPrerequisites] [-ProfileRepo <string>] [-ModulesRepo <string>] [-Branch <string>]
+Install-PowerShellSetup.ps1 [-GitHubUser <string>] [-ProfileRepo <string>] [-ModulesRepo <string>] [-Branch <string>] [-GitUserName <string>] [-GitUserEmail <string>]
 ```
 
 ### Parameters
 
-- `-GitHubUser` - Your GitHub username (default: USERNAME)
-- `-SkipPrerequisites` - Skip installing prerequisites if already installed
+- `-GitHubUser` - Your GitHub username (default: PostWarTacos)
 - `-ProfileRepo` - Name of the profile repository (default: PowerShellProfile)
 - `-ModulesRepo` - Name of the modules repository (default: Powershell-Modules)
 - `-Branch` - Git branch to download from (default: main)
+- `-GitUserName` - Value for `git config --global user.name` (default: PostWarTacos)
+- `-GitUserEmail` - Value for `git config --global user.email` (default: postwartacos@gmail.com)
 
 ### Examples
 
-Skip prerequisites:
-```powershell
-irm https://raw.githubusercontent.com/USERNAME/PowerShellProfile/main/Install-PowerShellSetup.ps1 | iex -ArgumentList @{SkipPrerequisites=$true}
-```
+Parameters can't be passed through a plain `irm | iex` pipeline, so wrap the downloaded script in a scriptblock to pass arguments:
 
 Custom branch:
 ```powershell
-irm https://raw.githubusercontent.com/USERNAME/PowerShellProfile/main/Install-PowerShellSetup.ps1 | iex -ArgumentList @{Branch='dev'}
+iex "& { $(irm https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/main/Install-PowerShellSetup.ps1) } -Branch 'dev'"
+```
+
+Custom git identity:
+```powershell
+iex "& { $(irm https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/main/Install-PowerShellSetup.ps1) } -GitUserName 'YourName' -GitUserEmail 'you@example.com'"
 ```
 
 ## Post-Installation
@@ -243,6 +248,15 @@ To remove the installation:
    ```powershell
    Remove-Item "$HOME\Documents\Coding\WorkspaceMeta\PowerShellProfile" -Recurse -Force -ErrorAction SilentlyContinue
    Remove-Item "$HOME\Documents\Coding\WorkspaceMeta\Powershell-Modules" -Recurse -Force -ErrorAction SilentlyContinue
+   ```
+
+   Remove Sysinternals Suite (requires Administrator):
+   ```powershell
+   Remove-Item "$env:SystemRoot\System32\SysinternalsSuite" -Recurse -Force -ErrorAction SilentlyContinue
+   Remove-Item "$([Environment]::GetFolderPath('Desktop'))\Sysinternals Suite.lnk" -Force -ErrorAction SilentlyContinue
+   $machinePath = [Environment]::GetEnvironmentVariable("Path", [EnvironmentVariableTarget]::Machine)
+   $newMachinePath = ($machinePath -split ';' | Where-Object { $_ -notlike "*SysinternalsSuite*" }) -join ';'
+   [Environment]::SetEnvironmentVariable("Path", $newMachinePath, [EnvironmentVariableTarget]::Machine)
    ```
 
 3. Clean up PSModulePath:
