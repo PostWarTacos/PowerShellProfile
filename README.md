@@ -53,16 +53,15 @@ The script clones two separate repositories into `~\Documents\Coding\`:
 The installation script supports several parameters:
 
 ```powershell
-Install-PowerShellSetup.ps1 [-GitHubUser <string>] [-ProfileRepo <string>] [-ModulesRepo <string>] [-Branch <string>] [-GitUserName <string>] [-GitUserEmail <string>]
+Install-PowerShellSetup.ps1 [-GitHubUser <string>] [-ProfileRepo <string>] [-ModulesRepo <string>] [-Branch <string>] [-GitUserEmail <string>]
 ```
 
 ### Parameters
 
-- `-GitHubUser` - Your GitHub username (default: PostWarTacos)
+- `-GitHubUser` - Your GitHub username (default: PostWarTacos). Also used as the `git config --global user.name` value.
 - `-ProfileRepo` - Name of the profile repository (default: PowerShellProfile)
 - `-ModulesRepo` - Name of the modules repository (default: Powershell-Modules)
 - `-Branch` - Git branch to download from (default: main)
-- `-GitUserName` - Value for `git config --global user.name` (default: PostWarTacos)
 - `-GitUserEmail` - Value for `git config --global user.email` (default: postwartacos@gmail.com)
 
 ### Examples
@@ -76,7 +75,7 @@ iex "& { $(irm https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/
 
 Custom git identity:
 ```powershell
-iex "& { $(irm https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/main/Install-PowerShellSetup.ps1) } -GitUserName 'YourName' -GitUserEmail 'you@example.com'"
+iex "& { $(irm https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/main/Install-PowerShellSetup.ps1) } -GitHubUser 'YourName' -GitUserEmail 'you@example.com'"
 ```
 
 ## Post-Installation
