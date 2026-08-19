@@ -4,6 +4,21 @@
 # Current User All Hosts PowerShell Profile
 # Set-Content $PROFILE -Value '. "C:\Users\wurtzmt\Documents\Coding\WorkspaceMeta\PowerShellProfile\PowerShellProfile.ps1"' -force
 
+#region TEMP Profile Timing Instrumentation (remove when done diagnosing load performance)
+
+$script:profileTimings = [ordered]@{}
+$script:profileStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+$script:lastCheckpoint = 0.0
+
+function Write-ProfileCheckpoint {
+    param([string]$Label)
+    $elapsedMs = $script:profileStopwatch.Elapsed.TotalMilliseconds
+    $script:profileTimings[$Label] = $elapsedMs - $script:lastCheckpoint
+    $script:lastCheckpoint = $elapsedMs
+}
+
+#endregion
+
 #region Telemetry Opt-Out
 
 # Check if user account is in the local Administrators group (not if currently elevated)
@@ -28,6 +43,7 @@ if ($isAdmin) {
 }
 
 #endregion
+Write-ProfileCheckpoint 'Telemetry Opt-Out'
 
 $ErrorActionPreference = 'SilentlyContinue'
 
@@ -49,6 +65,7 @@ try {
 }
 
 #endregion
+Write-ProfileCheckpoint 'Internet Connectivity Check'
 
 #region Create Coding Directory
 
@@ -64,6 +81,7 @@ If ( -not ( Test-Path "$user\Documents\Coding" )){
 }
 
 #endregion
+Write-ProfileCheckpoint 'Create Coding Directory'
 
 #region Install/Update Winget
 
@@ -115,6 +133,7 @@ function Sync-Winget {
 Start-Job -ScriptBlock ${function:Sync-Winget} -ArgumentList $hasInternet | Out-Null
 
 #endregion
+Write-ProfileCheckpoint 'Install/Update Winget'
 
 #region Install/Update winfetch
 
@@ -140,6 +159,7 @@ function Sync-Winfetch {
 Start-Job -ScriptBlock ${function:Sync-Winfetch} -ArgumentList $hasInternet | Out-Null
 
 #endregion
+Write-ProfileCheckpoint 'Install/Update winfetch'
 
 #region PowerShell Modules Auto Git Sync
 
@@ -196,6 +216,68 @@ function Sync-GitModules {
 Start-Job -ScriptBlock ${function:Sync-GitModules} -ArgumentList $moduleClonePath, $repoURL, $hasInternet | Out-Null
 
 #endregion
+Write-ProfileCheckpoint 'PowerShell Modules Auto Git Sync'
+
+#region Install/Update Sysinternals Suite
+
+function Sync-Sysinternals {
+    param($hasInternet, $isAdmin)
+
+    # Extracting to System32 and editing the machine PATH both require elevation
+    if (-not $hasInternet -or -not $isAdmin) {
+        return
+    }
+
+    $sysinternalsPath = "$env:SystemRoot\System32\SysinternalsSuite"
+    $hashMarkerPath = Join-Path $sysinternalsPath ".zipHash"
+    $tempZipPath = "$env:TEMP\SysinternalsSuite.zip"
+
+    try {
+        Invoke-WebRequest -Uri "https://download.sysinternals.com/files/SysinternalsSuite.zip" -OutFile $tempZipPath -ErrorAction Stop
+        $newHash = (Get-FileHash $tempZipPath -Algorithm SHA256).Hash
+
+        # Hash comparison against the last extracted zip stands in for a version check
+        $updateRequired = $true
+        if (Test-Path $hashMarkerPath) {
+            $oldHash = Get-Content $hashMarkerPath -ErrorAction SilentlyContinue
+            if ($oldHash -eq $newHash) {
+                $updateRequired = $false
+            }
+        }
+
+        if ($updateRequired) {
+            if (-not (Test-Path $sysinternalsPath)) {
+                New-Item -Path $sysinternalsPath -ItemType Directory -Force | Out-Null
+            }
+            Expand-Archive -Path $tempZipPath -DestinationPath $sysinternalsPath -Force
+            $newHash | Out-File $hashMarkerPath -Force
+        }
+
+        $machinePath = [Environment]::GetEnvironmentVariable("Path", [EnvironmentVariableTarget]::Machine)
+        if ($machinePath -notlike "*$sysinternalsPath*") {
+            [Environment]::SetEnvironmentVariable("Path", "$machinePath;$sysinternalsPath", [EnvironmentVariableTarget]::Machine)
+            $env:Path = "$env:Path;$sysinternalsPath"
+        }
+
+        $shortcutPath = Join-Path ([Environment]::GetFolderPath('Desktop')) "Sysinternals Suite.lnk"
+        if (-not (Test-Path $shortcutPath)) {
+            $wshShell = New-Object -ComObject WScript.Shell
+            $shortcut = $wshShell.CreateShortcut($shortcutPath)
+            $shortcut.TargetPath = $sysinternalsPath
+            $shortcut.Save()
+        }
+    } catch {
+        # Silent fail - not critical
+    } finally {
+        Remove-Item $tempZipPath -ErrorAction SilentlyContinue
+    }
+}
+
+# Sync Sysinternals Suite in background (non-blocking)
+Start-Job -ScriptBlock ${function:Sync-Sysinternals} -ArgumentList $hasInternet, $isAdmin | Out-Null
+
+#endregion
+Write-ProfileCheckpoint 'Install/Update Sysinternals Suite'
 
 #region Custom Functions
 
@@ -304,6 +386,7 @@ function Get-ItemProperty {
 }
 
 #endregion
+Write-ProfileCheckpoint 'Custom Functions'
 
 #region Add Custom Module Path
 
@@ -315,16 +398,17 @@ If ( Test-Path $moduleClonePath ){
 }
 
 #endregion
+Write-ProfileCheckpoint 'Add Custom Module Path'
 
 #region Cosmetics
 
 # Test if machine is a server. Don't run these commands if it is
 # Product type 1 = Workstation. 2 = Domain controller. 3 = non-DC server.
 if (( Get-CimInstance -ClassName Win32_OperatingSystem ).ProductType -eq 1 ) {
-    # Download configs and apply locally
-    # Only load in modern terminals (not ISE)
-    if ( $env:WT_SESSION ) {
-	           
+
+    # VS Code sets TERM_PROGRAM=vscode in its integrated terminal; skip oh-my-posh there only
+    if ( $env:TERM_PROGRAM -ne 'vscode' ) {
+
         # Install Nerd Font if not already installed (using .NET for faster check)
         $nerdFontInstalled = Test-Path "C:\Windows\Fonts\JetBrainsMonoNerdFont-Bold.ttf"
         if ( -not $nerdFontInstalled -and $hasInternet -and $hasWinget ) {
@@ -332,7 +416,7 @@ if (( Get-CimInstance -ClassName Win32_OperatingSystem ).ProductType -eq 1 ) {
             winget install --id=DEVCOM.JetBrainsMonoNerdFont -e --source=winget --silent 2>&1 | Out-Null
         }
 
-        # oh-my-posh
+        # oh-my-posh - loads in Windows Terminal, console host, and ISE
         If ( Get-Command oh-my-posh -ErrorAction SilentlyContinue ){
             $ompConfigPath = "$user\Documents\Coding\WorkspaceMeta\PowerShellProfile\OhMyPoshTheme.json"
             if ( -not ( Test-Path $ompConfigPath ) -and $hasInternet) {
@@ -352,7 +436,11 @@ if (( Get-CimInstance -ClassName Win32_OperatingSystem ).ProductType -eq 1 ) {
             # } else {
             #     $host.ui.RawUI.WindowTitle = "User: PowerShell"
             # }
-        }        
+        }
+    }
+
+    # Windows Terminal specific extras (settings sync, winfetch) - only in modern terminals
+    if ( $env:WT_SESSION ) {
 
         # Windows Terminal Settings - Check daily for updates using hash comparison
         if ($hasInternet) {
@@ -395,11 +483,24 @@ if (( Get-CimInstance -ClassName Win32_OperatingSystem ).ProductType -eq 1 ) {
         }
         
         # WinFetch - Only show once every 3 hours
-        if ( Get-Command WinFetch ){
-            $winfetchConfigPath = "$user\.config\winfetch\Config.ps1"
-            if ( -not ( Test-Path $winfetchConfigPath ) -and $hasInternet) {
-                Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/WinFetchConfig.ps1"`
-                    -OutFile $winfetchConfigPath
+        if ( Get-Command winfetch -ErrorAction SilentlyContinue ){
+            $repoWinfetchConfigPath = "$user\Documents\Coding\WorkspaceMeta\PowerShellProfile\WinFetchConfig.ps1"
+            $userWinfetchConfigDir = "$user\.config\winfetch"
+            $userWinfetchConfigPath = Join-Path $userWinfetchConfigDir "Config.ps1"
+            $activeWinfetchConfigPath = $repoWinfetchConfigPath
+
+            # Prefer the repo config so startup always uses your tracked theme/settings.
+            if (-not (Test-Path $activeWinfetchConfigPath)) {
+                if (-not (Test-Path $userWinfetchConfigDir)) {
+                    New-Item -Path $userWinfetchConfigDir -ItemType Directory -Force | Out-Null
+                }
+
+                if ( -not ( Test-Path $userWinfetchConfigPath ) -and $hasInternet) {
+                    Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/WinFetchConfig.ps1"`
+                        -OutFile $userWinfetchConfigPath
+                }
+
+                $activeWinfetchConfigPath = $userWinfetchConfigPath
             }
             
             # Check if WinFetch was shown in the last 3 hours
@@ -417,8 +518,8 @@ if (( Get-CimInstance -ClassName Win32_OperatingSystem ).ProductType -eq 1 ) {
                 }
             }
             
-            if ($showWinFetch) {
-                winfetch -configpath $winfetchConfigPath
+            if ($showWinFetch -and (Test-Path $activeWinfetchConfigPath)) {
+                winfetch -configpath $activeWinfetchConfigPath
                 (Get-Date -Format "yyyyMMddHHmmss") | Out-File $lastWinFetchFile -Force
             }
         }
@@ -426,8 +527,24 @@ if (( Get-CimInstance -ClassName Win32_OperatingSystem ).ProductType -eq 1 ) {
 }
  
 #endregion
+Write-ProfileCheckpoint 'Cosmetics'
 
 #region PSReadLineOptions
+
+# A previously-tested "!!" alias left bare "!!" lines in the PSReadLine history file;
+# those don't parse as PowerShell and crash history loading in every new session, so scrub them.
+try {
+    $historyPath = (Get-PSReadLineOption).HistorySavePath
+    if ($historyPath -and (Test-Path $historyPath)) {
+        $historyLines = Get-Content $historyPath -ErrorAction Stop
+        $cleanedLines = $historyLines | Where-Object { $_.Trim() -ne '!!' }
+        if ($cleanedLines.Count -ne $historyLines.Count) {
+            $cleanedLines | Set-Content $historyPath -Force
+        }
+    }
+} catch {
+    # Silently continue - not critical
+}
 
 # Searching for commands with up/down arrow is really handy.  The
 # option "moves to end" is useful if you want the cursor at the end
@@ -514,11 +631,17 @@ Set-PSReadLineKeyHandler -Key RightArrow `
     if ( $cursor -lt $line.Length ) {
         [Microsoft.PowerShell.PSConsoleReadLine]::ForwardChar( $key, $arg )
     } else {
-        [Microsoft.PowerShell.PSConsoleReadLine]::AcceptNextSuggestionWord( $key, $arg )
+        try {
+            # Throws when there's no suggestion available to accept
+            [Microsoft.PowerShell.PSConsoleReadLine]::AcceptNextSuggestionWord( $key, $arg )
+        } catch {
+            [Microsoft.PowerShell.PSConsoleReadLine]::ForwardChar( $key, $arg )
+        }
     }
 }
 
 #endregion
+Write-ProfileCheckpoint 'PSReadLineOptions'
 
 $ErrorActionPreference = 'Continue'
 $sessionHome = [System.Environment]::GetFolderPath("UserProfile")
@@ -531,5 +654,20 @@ If ( -not ( Test-Path "$user\Documents\Coding\PowerShell-Transcripts" )){
 }
 
 Start-Transcript -OutputDirectory "$user\Documents\Coding\PowerShell-Transcripts" -NoClobber -IncludeInvocationHeader | Out-Null
+
+#endregion
+Write-ProfileCheckpoint 'Transcript'
+
+#region TEMP Profile Timing Summary (remove when done diagnosing load performance)
+
+$script:profileStopwatch.Stop()
+Write-Host ""
+Write-Host "Profile load timings:" -ForegroundColor Cyan
+$script:profileTimings.GetEnumerator() | ForEach-Object {
+    $ms = [math]::Round($_.Value, 1)
+    $sec = [math]::Round($_.Value / 1000, 3)
+    Write-Host ("  {0,-40} {1,8:N1} ms  ({2,6:N3} s)" -f $_.Key, $ms, $sec)
+}
+Write-Host ("  {0,-40} {1,8:N1} ms  ({2,6:N3} s)" -f 'TOTAL', $script:profileStopwatch.Elapsed.TotalMilliseconds, $script:profileStopwatch.Elapsed.TotalSeconds) -ForegroundColor Yellow
 
 #endregion

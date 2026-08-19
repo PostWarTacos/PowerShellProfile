@@ -11,6 +11,16 @@ Quick installation script for setting up a complete PowerShell environment with 
 irm https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/main/Install-PowerShellSetup.ps1 | iex
 ```
 
+### One-Line Installation (ExecutionPolicy Bypass for this process)
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/main/Install-PowerShellSetup.ps1 | iex"
+```
+
+PowerShell 7:
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/main/Install-PowerShellSetup.ps1 | iex"
+```
+
 ## What Gets Installed
 
 ### Prerequisites
@@ -21,6 +31,9 @@ irm https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/main/Instal
 - **Oh My Posh** - Theme engine for PowerShell prompt
 - **JetBrains Mono Nerd Font** - Font with icon support
 - **winfetch** - System information tool
+
+### Configuration Changes
+- Sets PowerShell execution policy to **Bypass** at **CurrentUser** scope
 
 ### Repositories
 The script clones two separate repositories into `~\Documents\Coding\`:
@@ -138,6 +151,12 @@ If you prefer to install manually:
 If you get an execution policy error:
 ```powershell
 Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope CurrentUser
+```
+
+Temporary option for current session only:
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
+irm https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/main/Install-PowerShellSetup.ps1 | iex
 ```
 
 ### Oh My Posh Not Found

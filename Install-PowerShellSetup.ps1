@@ -116,6 +116,21 @@ if (-not $isAdmin) {
     }
 }
 
+# Configure execution policy for future PowerShell sessions
+Write-Host
+Write-Host "[*] Configuring execution policy..." -ForegroundColor Cyan
+try {
+    $currentUserExecutionPolicy = Get-ExecutionPolicy -Scope CurrentUser
+    if ($currentUserExecutionPolicy -ne 'Bypass') {
+        Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope CurrentUser -Force
+        Write-Host "[+] Set CurrentUser execution policy to Bypass" -ForegroundColor Green
+    } else {
+        Write-Host "[+] CurrentUser execution policy already set to Bypass" -ForegroundColor Green
+    }
+} catch {
+    Write-Host "[!] Could not set CurrentUser execution policy: $_" -ForegroundColor Yellow
+}
+
 Clear-Host
 Write-Host
 Write-Host "========================================" -ForegroundColor Cyan
@@ -128,9 +143,14 @@ Write-Host
 # Define paths
 $documentsPath = [System.Environment]::GetFolderPath("MyDocuments")
 $codingPath = Join-Path $documentsPath "Coding\WorkspaceMeta"
-$profileRepoPath = Join-Path $codingPath $ProfileRepo
+$mainProfileRepoPath = Join-Path $codingPath $ProfileRepo
 $modulesPath = Join-Path $codingPath $ModulesRepo
-$profileFile = $PROFILE.AllUsersAllHosts
+$psProfileTargetsToConfigure = @(
+    $PROFILE.AllUsersAllHosts,
+    $PROFILE.AllUsersCurrentHost,
+    $PROFILE.CurrentUserAllHosts,
+    $PROFILE.CurrentUserCurrentHost
+)
 
 # Verify GitHub connectivity
 Write-Host
@@ -296,6 +316,56 @@ Write-Host "[*] Installing prerequisites..." -ForegroundColor Cyan
         Write-Host "[+] winfetch already installed" -ForegroundColor Green
     }
 
+    # Install/Update Sysinternals Suite
+    Write-Host "  Checking Sysinternals Suite..." -ForegroundColor Gray
+    $sysinternalsPath = "$env:SystemRoot\System32\SysinternalsSuite"
+    $sysinternalsHashMarker = Join-Path $sysinternalsPath ".zipHash"
+    $tempSysinternalsZip = "$env:TEMP\SysinternalsSuite.zip"
+    try {
+        Invoke-WebRequest -Uri "https://download.sysinternals.com/files/SysinternalsSuite.zip" -OutFile $tempSysinternalsZip -ErrorAction Stop
+        $newSysinternalsHash = (Get-FileHash $tempSysinternalsZip -Algorithm SHA256).Hash
+
+        # Hash comparison against the last extracted zip stands in for a version check
+        $sysinternalsUpdateRequired = $true
+        if (Test-Path $sysinternalsHashMarker) {
+            $oldSysinternalsHash = Get-Content $sysinternalsHashMarker -ErrorAction SilentlyContinue
+            if ($oldSysinternalsHash -eq $newSysinternalsHash) {
+                $sysinternalsUpdateRequired = $false
+            }
+        }
+
+        if ($sysinternalsUpdateRequired) {
+            if (-not (Test-Path $sysinternalsPath)) {
+                New-Item -Path $sysinternalsPath -ItemType Directory -Force | Out-Null
+            }
+            Expand-Archive -Path $tempSysinternalsZip -DestinationPath $sysinternalsPath -Force
+            $newSysinternalsHash | Out-File $sysinternalsHashMarker -Force
+            Write-Host "[+] Installed/Updated Sysinternals Suite" -ForegroundColor Green
+        } else {
+            Write-Host "[+] Sysinternals Suite already up to date" -ForegroundColor Green
+        }
+
+        $machinePath = [Environment]::GetEnvironmentVariable("Path", [EnvironmentVariableTarget]::Machine)
+        if ($machinePath -notlike "*$sysinternalsPath*") {
+            [Environment]::SetEnvironmentVariable("Path", "$machinePath;$sysinternalsPath", [EnvironmentVariableTarget]::Machine)
+            $env:Path = "$env:Path;$sysinternalsPath"
+            Write-Host "[+] Added $sysinternalsPath to system PATH" -ForegroundColor Green
+        }
+
+        $sysinternalsShortcutPath = Join-Path ([Environment]::GetFolderPath('Desktop')) "Sysinternals Suite.lnk"
+        if (-not (Test-Path $sysinternalsShortcutPath)) {
+            $wshShell = New-Object -ComObject WScript.Shell
+            $sysinternalsShortcut = $wshShell.CreateShortcut($sysinternalsShortcutPath)
+            $sysinternalsShortcut.TargetPath = $sysinternalsPath
+            $sysinternalsShortcut.Save()
+            Write-Host "[+] Created desktop shortcut to Sysinternals Suite" -ForegroundColor Green
+        }
+    } catch {
+        Write-Host "[!] Could not install/update Sysinternals Suite: $_" -ForegroundColor Yellow
+    } finally {
+        Remove-Item $tempSysinternalsZip -ErrorAction SilentlyContinue
+    }
+
 # Clone repositories
 Write-Host
 Write-Host "[*] Cloning repositories..." -ForegroundColor Cyan
@@ -307,9 +377,9 @@ if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
 
 # Clone PowerShell Profile
 $profileRepoUrl = "https://github.com/$GitHubUser/$ProfileRepo.git"
-if (Test-Path $profileRepoPath) {
+if (Test-Path $mainProfileRepoPath) {
     Write-Host "  Updating PowerShell Profile..." -ForegroundColor Gray
-    Push-Location $profileRepoPath
+    Push-Location $mainProfileRepoPath
     try {
         git pull origin $Branch 2>&1 | Out-Null
         Write-Host "[+] Updated: $ProfileRepo" -ForegroundColor Green
@@ -320,9 +390,9 @@ if (Test-Path $profileRepoPath) {
 } else {
     Write-Host "  Cloning PowerShell Profile..." -ForegroundColor Gray
     try {
-        git clone $profileRepoUrl $profileRepoPath 2>&1 | Out-Null
+        git clone $profileRepoUrl $mainProfileRepoPath 2>&1 | Out-Null
         if ($Branch -ne "main") {
-            Push-Location $profileRepoPath
+            Push-Location $mainProfileRepoPath
             git checkout $Branch 2>&1 | Out-Null
             Pop-Location
         }
@@ -379,11 +449,11 @@ if ($currentPSModulePath -notlike "*$modulesPath*") {
 # Clear existing profiles for clean slate
 Write-Host
 Write-Host "[*] Clearing existing profiles..." -ForegroundColor Cyan
-$profilesToClear = @($PROFILE.AllUsersAllHosts, $PROFILE.AllUsersCurrentHost, $PROFILE.CurrentUserAllHosts, $PROFILE.CurrentUserCurrentHost)
-foreach ($profile in $profilesToClear) {
-    if (Test-Path $profile) {
-        Set-Content -Path $profile -Value "" -Force
-        Write-Host "[+] Cleared: $profile" -ForegroundColor Green
+$psProfileTargetsToClear = @($PROFILE.AllUsersAllHosts, $PROFILE.AllUsersCurrentHost, $PROFILE.CurrentUserAllHosts, $PROFILE.CurrentUserCurrentHost)
+foreach ($psTargetToClear in $psProfileTargetsToClear) {
+    if (Test-Path $psTargetToClear) {
+        Set-Content -Path $psTargetToClear -Value "" -Force
+        Write-Host "[+] Cleared: $psTargetToClear" -ForegroundColor Green
     }
 }
 
@@ -392,34 +462,36 @@ $ps51Profiles = @(
     "$HOME\Documents\WindowsPowerShell\profile.ps1",
     "$HOME\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1"
 )
-foreach ($profile in $ps51Profiles) {
-    if (Test-Path $profile) {
-        Set-Content -Path $profile -Value "" -Force
-        Write-Host "[+] Cleared PS 5.1: $profile" -ForegroundColor Green
+foreach ($ps51ProfilePath in $ps51Profiles) {
+    if (Test-Path $ps51ProfilePath) {
+        Set-Content -Path $ps51ProfilePath -Value "" -Force
+        Write-Host "[+] Cleared PS 5.1: $ps51ProfilePath" -ForegroundColor Green
     }
 }
 
 # Configure PowerShell Profile
 Write-Host
 Write-Host "[*] Configuring PowerShell Profile..." -ForegroundColor Cyan
-$profileDir = Split-Path $profileFile -Parent
-if (-not (Test-Path $profileDir)) {
-    New-Item -Path $profileDir -ItemType Directory -Force | Out-Null
-}
-
-$profileContent = @"
+$loaderContent = @"
 # Auto-generated profile loader
 # Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
 
 # Load the main PowerShell profile
-. "$profileRepoPath\PowerShellProfile.ps1"
+. "$mainProfileRepoPath\PowerShellProfile.ps1"
 "@
 
-try {
-    Set-Content -Path $profileFile -Value $profileContent -Force
-    Write-Host "[+] Configured profile at: $profileFile" -ForegroundColor Green
-} catch {
-    Write-Host "[!] Could not configure profile: $_" -ForegroundColor Yellow
+foreach ($psTarget in $psProfileTargetsToConfigure) {
+    try {
+        $targetDir = Split-Path $psTarget -Parent
+        if (-not (Test-Path $targetDir)) {
+            New-Item -Path $targetDir -ItemType Directory -Force | Out-Null
+        }
+
+        Set-Content -Path $psTarget -Value $loaderContent -Force
+        Write-Host "[+] Configured profile at: $psTarget" -ForegroundColor Green
+    } catch {
+        Write-Host "[!] Could not configure profile at $psTarget`: $_" -ForegroundColor Yellow
+    }
 }
 
 # Summary
@@ -430,7 +502,7 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host
 
 Write-Host "Profile Location: " -ForegroundColor White -NoNewline
-Write-Host $profileRepoPath -ForegroundColor Yellow
+Write-Host $mainProfileRepoPath -ForegroundColor Yellow
 
 Write-Host "Modules Location: " -ForegroundColor White -NoNewline
 Write-Host $modulesPath -ForegroundColor Yellow
