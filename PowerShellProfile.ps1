@@ -661,11 +661,19 @@ set-location $sessionHome
 
 #region Transcript
 
-If ( -not ( Test-Path "$user\Documents\Coding\PowerShell-Transcripts" )){
-	mkdir "$user\Documents\Coding\PowerShell-Transcripts" | Out-Null
+$transcriptDir = "$user\Documents\Coding\PowerShell-Transcripts"
+If ( -not ( Test-Path $transcriptDir )){
+	mkdir $transcriptDir | Out-Null
 }
 
-Start-Transcript -OutputDirectory "$user\Documents\Coding\PowerShell-Transcripts" -NoClobber -IncludeInvocationHeader | Out-Null
+$transcriptStartMessage = Start-Transcript -OutputDirectory $transcriptDir -NoClobber -IncludeInvocationHeader -PassThru
+$transcriptPath = $null
+if ($transcriptStartMessage -match 'output file is (.+)$') {
+    $transcriptPath = $matches[1].Trim()
+}
+
+# Stop-Transcript won't run on its own if the console window is closed instead of exited normally
+Register-EngineEvent -SourceIdentifier PowerShell.Exiting -Action { Stop-Transcript -ErrorAction SilentlyContinue } | Out-Null
 
 #endregion
 Write-ProfileCheckpoint 'Transcript'
@@ -673,13 +681,20 @@ Write-ProfileCheckpoint 'Transcript'
 #region TEMP Profile Timing Summary (remove when done diagnosing load performance)
 
 $script:profileStopwatch.Stop()
-Write-Host ""
-Write-Host "Profile load timings:" -ForegroundColor Cyan
+$timingLines = [System.Collections.Generic.List[string]]::new()
+$timingLines.Add("")
+$timingLines.Add("Profile load timings:")
 $script:profileTimings.GetEnumerator() | ForEach-Object {
     $ms = [math]::Round($_.Value, 1)
     $sec = [math]::Round($_.Value / 1000, 3)
-    Write-Host ("  {0,-40} {1,8:N1} ms  ({2,6:N3} s)" -f $_.Key, $ms, $sec)
+    $timingLines.Add( ("  {0,-40} {1,8:N1} ms  ({2,6:N3} s)" -f $_.Key, $ms, $sec) )
 }
-Write-Host ("  {0,-40} {1,8:N1} ms  ({2,6:N3} s)" -f 'TOTAL', $script:profileStopwatch.Elapsed.TotalMilliseconds, $script:profileStopwatch.Elapsed.TotalSeconds) -ForegroundColor Yellow
+$timingLines.Add( ("  {0,-40} {1,8:N1} ms  ({2,6:N3} s)" -f 'TOTAL', $script:profileStopwatch.Elapsed.TotalMilliseconds, $script:profileStopwatch.Elapsed.TotalSeconds) )
+
+# Record timings in the transcript file only - not shown on screen
+if ($transcriptPath -and (Test-Path $transcriptPath)) {
+    Add-Content -Path $transcriptPath -Value $timingLines
+}
 
 #endregion
+
