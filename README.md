@@ -190,6 +190,19 @@ Import-Module "$HOME\Documents\Coding\WorkspaceMeta\Powershell-Modules\ModuleNam
 - **Internet connection** for downloading files and prerequisites
 - **Administrator rights** (optional, but recommended for full feature set)
 
+## Forking / Sharing This Setup
+
+If you fork this repository for your own use, update these hardcoded values before running the installer:
+
+| Location | Variable | Purpose |
+|---|---|---|
+| `Install-PowerShellSetup.ps1` param block | `$GitHubUser` (default `PostWarTacos`) | GitHub account the repos are cloned from; also used as `git config --global user.name` |
+| `Install-PowerShellSetup.ps1` param block | `$GitUserEmail` (default `postwartacos@gmail.com`) | Value for `git config --global user.email` |
+| `PowerShellProfile.ps1` `#region Fork Configuration` (top of file) | `$repoOwner` (default `PostWarTacos`) | GitHub account the profile pulls theme/config/module updates from at runtime |
+| `PowerShellProfile.ps1` `#region Fork Configuration` (top of file) | `$userProfileOverrideName` / `$userProfileOverridePath` | Only needed if your on-disk profile path differs from `$env:UserProfile` (e.g. OneDrive-redirected profiles); leave blank otherwise |
+
+See the [Powershell-Modules README](https://github.com/PostWarTacos/Powershell-Modules) for module-specific values (e.g. `AdminTools` default domain/username) that also need updating.
+
 ## Author
 
 Created by **PostWarTacos**
@@ -216,7 +229,7 @@ To remove the installation:
 
 1. Remove profile reference
    ```powershell
-   # Clear the profile files for the current user (wurtzmt-a)
+   # Clear the profile files for the current user
    Write-Host "Clearing profiles for: $env:USERNAME" -ForegroundColor Cyan
    $profiles = @($PROFILE.AllUsersAllHosts, $PROFILE.AllUsersCurrentHost, $PROFILE.CurrentUserAllHosts, $PROFILE.CurrentUserCurrentHost)
    foreach ($profilePath in $profiles) {

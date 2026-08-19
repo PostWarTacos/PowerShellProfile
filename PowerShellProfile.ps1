@@ -1,8 +1,20 @@
 ﻿# All Users All Hosts PowerShell Profile
-# Set-Content -Path "C:\Windows\System32\WindowsPowerShell\v1.0\profile.ps1" -Value '. "C:\Users\wurtzmt\Documents\Coding\WorkspaceMeta\PowerShellProfile\PowerShellProfile.ps1"' -Force
+# Set-Content -Path "C:\Windows\System32\WindowsPowerShell\v1.0\profile.ps1" -Value '. "C:\Users\<YourUsername>\Documents\Coding\WorkspaceMeta\PowerShellProfile\PowerShellProfile.ps1"' -Force
 
 # Current User All Hosts PowerShell Profile
-# Set-Content $PROFILE -Value '. "C:\Users\wurtzmt\Documents\Coding\WorkspaceMeta\PowerShellProfile\PowerShellProfile.ps1"' -force
+# Set-Content $PROFILE -Value '. "C:\Users\<YourUsername>\Documents\Coding\WorkspaceMeta\PowerShellProfile\PowerShellProfile.ps1"' -force
+
+#region Fork Configuration (CHANGE THESE if you are not PostWarTacos - see README)
+
+# GitHub account that hosts the profile/theme/module downloads used throughout this script
+$repoOwner = "PostWarTacos"
+
+# Only needed if your on-disk profile folder differs from $env:UserProfile (e.g. OneDrive-redirected profiles).
+# Leave $userProfileOverrideName empty to always use the default Windows user profile path.
+$userProfileOverrideName = ""
+$userProfileOverridePath = ""
+
+#endregion
 
 #region TEMP Profile Timing Instrumentation (remove when done diagnosing load performance)
 
@@ -69,8 +81,8 @@ Write-ProfileCheckpoint 'Internet Connectivity Check'
 
 #region Create Coding Directory
 
-If ( $(whoami) -match "wurtzmt" ){
-    $user = "C:\users\wurtzmt"
+If ( $userProfileOverrideName -and ( $(whoami) -match $userProfileOverrideName ) ){
+    $user = $userProfileOverridePath
 } 
 Else {
     $user = [System.Environment]::GetFolderPath("UserProfile")
@@ -163,7 +175,7 @@ Write-ProfileCheckpoint 'Install/Update winfetch'
 
 #region PowerShell Modules Auto Git Sync
 
-$repoURL = "https://github.com/PostWarTacos/Powershell-Modules.git"
+$repoURL = "https://github.com/$repoOwner/Powershell-Modules.git"
 $moduleClonePath = "$user\Documents\Coding\WorkspaceMeta\Powershell-Modules"
 
 function Sync-GitModules {
@@ -284,7 +296,7 @@ Write-ProfileCheckpoint 'Install/Update Sysinternals Suite'
 # Profile Management
 function Update-Profile {
     try {
-        $profileUrl = "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/PowerShellProfile.ps1"
+        $profileUrl = "https://raw.githubusercontent.com/$repoOwner/PowerShellProfile/refs/heads/main/PowerShellProfile.ps1"
         $currentProfilePath = "$user\Documents\Coding\WorkspaceMeta\PowerShellProfile\PowerShellProfile.ps1"
         
         Write-Host "Checking for profile updates..." -ForegroundColor Cyan
@@ -420,7 +432,7 @@ if (( Get-CimInstance -ClassName Win32_OperatingSystem ).ProductType -eq 1 ) {
         If ( Get-Command oh-my-posh -ErrorAction SilentlyContinue ){
             $ompConfigPath = "$user\Documents\Coding\WorkspaceMeta\PowerShellProfile\OhMyPoshTheme.json"
             if ( -not ( Test-Path $ompConfigPath ) -and $hasInternet) {
-                Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/OhMyPoshTheme.json"`
+                Invoke-WebRequest "https://raw.githubusercontent.com/$repoOwner/PowerShellProfile/refs/heads/main/OhMyPoshTheme.json"`
                     -OutFile $ompConfigPath
             }
             if ($PSVersionTable.PSVersion.Major -ge 6) {
@@ -466,7 +478,7 @@ if (( Get-CimInstance -ClassName Win32_OperatingSystem ).ProductType -eq 1 ) {
             if ($shouldCheck) {
                 try {
                     $localHash = Get-FileHash $wtSettingsPath -ErrorAction Stop
-                    Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/WindowsTerminalSettings.json"`
+                    Invoke-WebRequest "https://raw.githubusercontent.com/$repoOwner/PowerShellProfile/refs/heads/main/WindowsTerminalSettings.json"`
                         -OutFile "$env:TEMP\WindowsTerminalSettings.json" -ErrorAction Stop
                     $remoteHash = Get-FileHash "$env:TEMP\WindowsTerminalSettings.json"
                     
@@ -496,7 +508,7 @@ if (( Get-CimInstance -ClassName Win32_OperatingSystem ).ProductType -eq 1 ) {
                 }
 
                 if ( -not ( Test-Path $userWinfetchConfigPath ) -and $hasInternet) {
-                    Invoke-WebRequest "https://raw.githubusercontent.com/PostWarTacos/PowerShellProfile/refs/heads/main/WinFetchConfig.ps1"`
+                    Invoke-WebRequest "https://raw.githubusercontent.com/$repoOwner/PowerShellProfile/refs/heads/main/WinFetchConfig.ps1"`
                         -OutFile $userWinfetchConfigPath
                 }
 
