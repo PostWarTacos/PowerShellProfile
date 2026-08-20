@@ -171,8 +171,10 @@ function Sync-Winfetch {
     }
 }
 
-# Sync winfetch in background (non-blocking)
-Start-Job -ScriptBlock ${function:Sync-Winfetch} -ArgumentList $hasInternet | Out-Null
+# Sync winfetch in background (non-blocking), except in VS Code terminals
+if ($env:TERM_PROGRAM -ne 'vscode') {
+    Start-Job -ScriptBlock ${function:Sync-Winfetch} -ArgumentList $hasInternet | Out-Null
+}
 
 #endregion
 Write-ProfileCheckpoint 'Install/Update winfetch'
@@ -498,8 +500,8 @@ if (( Get-CimInstance -ClassName Win32_OperatingSystem ).ProductType -eq 1 ) {
             }
         }
         
-        # WinFetch - Only show once every 3 hours
-        if ( Get-Command winfetch -ErrorAction SilentlyContinue ){
+        # WinFetch - Only show once every 3 hours, except in VS Code terminals
+        if ($env:TERM_PROGRAM -ne 'vscode' -and (Get-Command winfetch -ErrorAction SilentlyContinue)) {
             $repoWinfetchConfigPath = "$user\Documents\Coding\WorkspaceMeta\PowerShellProfile\WinFetchConfig.ps1"
             $userWinfetchConfigDir = "$user\.config\winfetch"
             $userWinfetchConfigPath = Join-Path $userWinfetchConfigDir "Config.ps1"
@@ -535,7 +537,7 @@ if (( Get-CimInstance -ClassName Win32_OperatingSystem ).ProductType -eq 1 ) {
             }
             
             if ($showWinFetch -and (Test-Path $activeWinfetchConfigPath)) {
-                winfetch -configpath $activeWinfetchConfigPath
+                winfetch -configpath $activeWinfetchConfigPath -stripansi
                 (Get-Date -Format "yyyyMMddHHmmss") | Out-File $lastWinFetchFile -Force
             }
         }
@@ -665,38 +667,58 @@ set-location $sessionHome
 
 #region Transcript
 
-$transcriptDir = "$user\Documents\Coding\PowerShell-Transcripts"
-If ( -not ( Test-Path $transcriptDir )){
-	mkdir $transcriptDir | Out-Null
-}
+if ($env:TERM_PROGRAM -ne 'vscode') {
+    $transcriptDir = "$user\Documents\Coding\PowerShell-Transcripts"
+    If ( -not ( Test-Path $transcriptDir )){
+        mkdir $transcriptDir | Out-Null
+    }
 
-$transcriptFileName = "PowerShell_transcript_{0}_{1}.txt" -f $env:COMPUTERNAME, (Get-Date -Format "yyyyMMdd_HHmmss")
-$transcriptPath = Join-Path $transcriptDir $transcriptFileName
-Start-Transcript -Path $transcriptPath -NoClobber -IncludeInvocationHeader | Out-Null
+    $transcriptFileName = "PowerShell_transcript_{0}_{1}.txt" -f $env:COMPUTERNAME, (Get-Date -Format "yyyyMMdd_HHmmss")
+    $transcriptPath = Join-Path $transcriptDir $transcriptFileName
+    Start-Transcript -Path $transcriptPath -NoClobber | Out-Null
 
 # Stop-Transcript won't run on its own if the console window is closed instead of exited normally.
-$transcriptState = @{
-    Path = $transcriptPath
-    TimingLines = $null
-}
+$global:workspaceMetaTranscriptPath = $transcriptPath
+$global:workspaceMetaTranscriptTimingLines = $null
+$global:workspaceMetaTranscriptTimingFile = "$transcriptPath.timings"
+$global:workspaceMetaTranscriptFinalizer = Join-Path $env:TEMP "WorkspaceMeta-TranscriptFinalizer-$PID.ps1"
 
-Register-EngineEvent -SourceIdentifier PowerShell.Exiting -MessageData $transcriptState -Action {
-    $state = $event.MessageData
-    Stop-Transcript -ErrorAction SilentlyContinue
+$finalizer = @'
+param([string]$transcriptPath, [string]$timingPath, [string]$helperPath)
 
-    if ($state.TimingLines -and (Test-Path $state.Path)) {
-        try {
-            $transcriptContent = [System.IO.File]::ReadAllText($state.Path)
-            $timingText = $state.TimingLines -join [Environment]::NewLine
-            [System.IO.File]::WriteAllText(
-                $state.Path,
-                "$timingText$([Environment]::NewLine)$([Environment]::NewLine)$transcriptContent",
-                [System.Text.UTF8Encoding]::new($false)
-            )
-        } catch {
-            # Silently continue - the transcript was already stopped.
-        }
+for ($attempt = 0; $attempt -lt 50; $attempt++) {
+    try {
+        $transcriptContent = [System.IO.File]::ReadAllText($transcriptPath)
+        $timingText = [System.IO.File]::ReadAllText($timingPath)
+        $ansiPattern = [char]27 + '\[[0-?]*[ -/]*[@-~]'
+        $transcriptContent = [regex]::Replace($transcriptContent, $ansiPattern, '')
+        [System.IO.File]::WriteAllText(
+            $transcriptPath,
+            "$timingText$([Environment]::NewLine)$([Environment]::NewLine)$transcriptContent",
+            [System.Text.UTF8Encoding]::new($false)
+        )
+        Remove-Item $timingPath -Force -ErrorAction SilentlyContinue
+        Remove-Item $helperPath -Force -ErrorAction SilentlyContinue
+        break
+    } catch {
+        [System.Threading.Thread]::Sleep(100)
     }
+}
+'@
+$finalizer | Set-Content -Path $global:workspaceMetaTranscriptFinalizer -Encoding UTF8 -Force
+
+Register-EngineEvent -SourceIdentifier PowerShell.Exiting -Action {
+    if (Test-Path $global:workspaceMetaTranscriptTimingFile) {
+        Start-Process -FilePath powershell.exe -WindowStyle Hidden -ArgumentList @(
+            '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File',
+            $global:workspaceMetaTranscriptFinalizer,
+            $global:workspaceMetaTranscriptPath,
+            $global:workspaceMetaTranscriptTimingFile,
+            $global:workspaceMetaTranscriptFinalizer
+        ) | Out-Null
+    }
+
+    Stop-Transcript -ErrorAction SilentlyContinue
 } | Out-Null
 
 #endregion
@@ -715,9 +737,11 @@ $script:profileTimings.GetEnumerator() | ForEach-Object {
 }
 $timingLines.Add( ("  {0,-40} {1,8:N1} ms  ({2,6:N3} s)" -f 'TOTAL', $script:profileStopwatch.Elapsed.TotalMilliseconds, $script:profileStopwatch.Elapsed.TotalSeconds) )
 
-# The exit handler stops the transcript before prepending these timings, avoiding
-# writes to a transcript file while Start-Transcript still has it open.
-$transcriptState.TimingLines = $timingLines.ToArray()
+# The exit handler writes these lines into the active transcript before stopping
+# it, avoiding a file rewrite while Windows PowerShell still owns the transcript.
+$global:workspaceMetaTranscriptTimingLines = $timingLines.ToArray()
+    $timingLines | Set-Content -Path $global:workspaceMetaTranscriptTimingFile -Encoding UTF8 -Force
+}
 
 #endregion
 
