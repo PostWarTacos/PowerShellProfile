@@ -152,10 +152,7 @@ $codingPath = Join-Path $documentsPath "Coding\WorkspaceMeta"
 $mainProfileRepoPath = Join-Path $codingPath $ProfileRepo
 $modulesPath = Join-Path $codingPath $ModulesRepo
 $psProfileTargetsToConfigure = @(
-    $PROFILE.AllUsersAllHosts,
-    $PROFILE.AllUsersCurrentHost,
-    $PROFILE.CurrentUserAllHosts,
-    $PROFILE.CurrentUserCurrentHost
+    $PROFILE.CurrentUserAllHosts
 )
 
 # Verify GitHub connectivity

@@ -4,6 +4,11 @@
 # Current User All Hosts PowerShell Profile
 # Set-Content $PROFILE -Value '. "C:\Users\<YourUsername>\Documents\Coding\WorkspaceMeta\PowerShellProfile\PowerShellProfile.ps1"' -force
 
+if ($script:workspaceMetaProfileLoaded) {
+    return
+}
+$script:workspaceMetaProfileLoaded = $true
+
 #region Fork Configuration (CHANGE THESE if you are not PostWarTacos - see README)
 
 # GitHub account that hosts the profile/theme/module downloads used throughout this script
@@ -36,7 +41,6 @@ function Write-ProfileCheckpoint {
 # Check if user account is in the local Administrators group (not if currently elevated)
 $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
 $adminSid = [Security.Principal.SecurityIdentifier]'S-1-5-32-544'
-$isInAdminGroup = $currentUser.Groups -contains $adminSid
 
 # Check if currently running elevated
 $isAdmin = ([Security.Principal.WindowsPrincipal]$currentUser).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -666,14 +670,34 @@ If ( -not ( Test-Path $transcriptDir )){
 	mkdir $transcriptDir | Out-Null
 }
 
-$transcriptStartMessage = Start-Transcript -OutputDirectory $transcriptDir -NoClobber -IncludeInvocationHeader -PassThru
-$transcriptPath = $null
-if ($transcriptStartMessage -match 'output file is (.+)$') {
-    $transcriptPath = $matches[1].Trim()
+$transcriptFileName = "PowerShell_transcript_{0}_{1}.txt" -f $env:COMPUTERNAME, (Get-Date -Format "yyyyMMdd_HHmmss")
+$transcriptPath = Join-Path $transcriptDir $transcriptFileName
+Start-Transcript -Path $transcriptPath -NoClobber -IncludeInvocationHeader | Out-Null
+
+# Stop-Transcript won't run on its own if the console window is closed instead of exited normally.
+$transcriptState = @{
+    Path = $transcriptPath
+    TimingLines = $null
 }
 
-# Stop-Transcript won't run on its own if the console window is closed instead of exited normally
-Register-EngineEvent -SourceIdentifier PowerShell.Exiting -Action { Stop-Transcript -ErrorAction SilentlyContinue } | Out-Null
+Register-EngineEvent -SourceIdentifier PowerShell.Exiting -MessageData $transcriptState -Action {
+    $state = $event.MessageData
+    Stop-Transcript -ErrorAction SilentlyContinue
+
+    if ($state.TimingLines -and (Test-Path $state.Path)) {
+        try {
+            $transcriptContent = [System.IO.File]::ReadAllText($state.Path)
+            $timingText = $state.TimingLines -join [Environment]::NewLine
+            [System.IO.File]::WriteAllText(
+                $state.Path,
+                "$timingText$([Environment]::NewLine)$([Environment]::NewLine)$transcriptContent",
+                [System.Text.UTF8Encoding]::new($false)
+            )
+        } catch {
+            # Silently continue - the transcript was already stopped.
+        }
+    }
+} | Out-Null
 
 #endregion
 Write-ProfileCheckpoint 'Transcript'
@@ -691,10 +715,9 @@ $script:profileTimings.GetEnumerator() | ForEach-Object {
 }
 $timingLines.Add( ("  {0,-40} {1,8:N1} ms  ({2,6:N3} s)" -f 'TOTAL', $script:profileStopwatch.Elapsed.TotalMilliseconds, $script:profileStopwatch.Elapsed.TotalSeconds) )
 
-# Record timings in the transcript file only - not shown on screen
-if ($transcriptPath -and (Test-Path $transcriptPath)) {
-    Add-Content -Path $transcriptPath -Value $timingLines
-}
+# The exit handler stops the transcript before prepending these timings, avoiding
+# writes to a transcript file while Start-Transcript still has it open.
+$transcriptState.TimingLines = $timingLines.ToArray()
 
 #endregion
 
